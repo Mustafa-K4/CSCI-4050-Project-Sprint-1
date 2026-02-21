@@ -4,7 +4,9 @@ import SearchBar from '../components/SearchBar';
 import FilterBar from '../components/FilterBar';
 import styles from './HomePage.module.css';
 
+
 export default function HomePage() {
+
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +20,7 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
 
-    fetch('http://localhost:5000/movies', { signal: ctl.signal })
+    fetch('http://localhost:3000/api/movies', { signal: ctl.signal })
       .then(res => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();

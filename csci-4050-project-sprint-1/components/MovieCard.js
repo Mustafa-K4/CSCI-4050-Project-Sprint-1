@@ -1,13 +1,15 @@
+'use client';
+
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import styles from './MovieCard.module.css';
 
 export default function MovieCard({ movie }) {
-  const navigate = useNavigate();
+  const router = useRouter();
   const placeholder = 'https://via.placeholder.com/300x450?text=No+Poster';
 
   function go() {
-    if (movie && movie.id) navigate(`/movies/${movie.id}`);
+    if (movie && movie._id) router.push(`/movies/${movie._id}`);
   }
 
   function onKey(e) {
