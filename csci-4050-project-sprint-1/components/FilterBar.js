@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './FilterBar.module.css';
 
-const GENRES = ['All', 'Drama', 'Sci-Fi', 'Comedy'];
+const GENRES = ['All', 'Drama', 'Sci-Fi', 'Comedy', 'Action', 'Horror', 'Romance', 'Thriller', 'Adventure', 'Fantasy', 'Animation', 'Mystery'];
 
 export default function FilterBar({ value, onChange }) {
   return (
