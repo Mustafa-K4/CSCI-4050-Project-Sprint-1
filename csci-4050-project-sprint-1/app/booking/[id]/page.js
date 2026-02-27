@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import styles from './page.module.css';
 
 const PRICES = { adult: 12, child: 8, senior: 10 };
-const placeholder = 'https://via.placeholder.com/200x300?text=No+Poster';
 
 function formatTime(t) {
   if (!t) return '—';
@@ -93,10 +91,7 @@ export default function BookingPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <Link href={`/movies/${id}`} className={styles.backLink}>← Back</Link>
-        <h2 className={styles.pageTitle}>Book Your Tickets</h2>
-      </header>
+      <h1 className={styles.pageTitle}>Book Tickets</h1>
 
       {loading && <p className={styles.loading}>Loading movie...</p>}
       {error && <p className={styles.error}>Error: {error}</p>}
@@ -104,21 +99,13 @@ export default function BookingPage() {
       {!loading && !error && movie ? (
         <div className={styles.grid}>
           <div className={styles.left}>
-            <div className={styles.posterWrap}>
-              <img 
-                src={movie?.poster_url || placeholder} 
-                alt={`${movie?.title || 'Movie'} poster`} 
-                className={styles.poster} 
-              />
-            </div>
-            <h3 className={styles.title}>{movie?.title || 'Untitled'}</h3>
-            <p className={styles.meta}>Showtime: <strong>{formatTime(selectedTime)}</strong></p>
+            <p className={styles.meta}>{movie?.title || 'Movie'} • {formatTime(selectedTime)}</p>
 
             <section className={styles.tickets}>
-              <h4>Select Tickets</h4>
+              <h4>Tickets</h4>
               <div className={styles.ticketRow}>
                 <label>
-                  Adult (${PRICES.adult})
+                  Adult ($12)
                   <input 
                     type="number" 
                     min={0} 
@@ -127,7 +114,7 @@ export default function BookingPage() {
                   />
                 </label>
                 <label>
-                  Child (${PRICES.child})
+                  Child ($8)
                   <input 
                     type="number" 
                     min={0} 
@@ -136,7 +123,7 @@ export default function BookingPage() {
                   />
                 </label>
                 <label>
-                  Senior (${PRICES.senior})
+                  Senior ($10)
                   <input 
                     type="number" 
                     min={0} 
@@ -145,16 +132,10 @@ export default function BookingPage() {
                   />
                 </label>
               </div>
-
-              <div className={styles.summary}>
-                <div>Tickets: <strong>{ticketCount}</strong></div>
-                <div>Price: <strong>${subtotal.toFixed(2)}</strong></div>
-              </div>
             </section>
 
             <section className={styles.seatsSection}>
               <h4>Select Seats</h4>
-              <div className={styles.screen}>SCREEN</div>
               <div className={styles.seatGrid}>
                 {seatsArray.map((row, ri) => (
                   <div key={ri} className={styles.seatRow}>
@@ -169,43 +150,21 @@ export default function BookingPage() {
                           onClick={() => toggleSeat(r, c)}
                           aria-pressed={isSelected}
                           aria-label={`Seat row ${r + 1} column ${c + 1}`}
-                        >
-                          {r + 1}-{c + 1}
-                        </button>
+                        />
                       );
                     })}
                   </div>
                 ))}
               </div>
-
-              <div className={styles.selectionSummary}>
-                <div>Selected seats: <strong>{selectedSeats.size}</strong></div>
-              </div>
             </section>
-          </div>
 
-          <aside className={styles.right}>
-            <div className={styles.card}>
-              <h4>Order Summary</h4>
-              <div className={styles.summaryDetails}>
-                <p><strong>{movie?.title || 'Movie'}</strong></p>
-                <p className={styles.smallText}>Showtime: {formatTime(selectedTime)}</p>
-                <p className={styles.smallText}>Tickets: {ticketCount}</p>
-                <p className={styles.smallText}>Seats: {selectedSeats.size}</p>
-              </div>
-              <hr />
-              <div className={styles.totalRow}>
-                <span>Total:</span>
-                <span className={styles.total}>${subtotal.toFixed(2)}</span>
-              </div>
-              <button 
-                className={styles.confirmBtn} 
-                disabled={ticketCount === 0 || selectedSeats.size === 0}
-              >
-                Proceed to Payment
-              </button>
-            </div>
-          </aside>
+            <button 
+              className={styles.confirmBtn} 
+              disabled={ticketCount === 0 || selectedSeats.size === 0}
+            >
+              See the Details
+            </button>
+          </div>
         </div>
       ) : !loading && !error ? (
         <p className={styles.noMovie}>No movie found.</p>
