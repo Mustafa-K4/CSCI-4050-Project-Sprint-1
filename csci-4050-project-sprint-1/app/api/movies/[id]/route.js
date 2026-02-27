@@ -6,7 +6,7 @@ export async function GET(request, { params }) {
   try {
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await params;
     
     if (!id) {
       return NextResponse.json(
