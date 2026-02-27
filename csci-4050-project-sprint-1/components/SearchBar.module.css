@@ -1,5 +1,24 @@
-.search{display:flex;flex-direction:column}
-.form{display:flex;gap:8px}
-.search input{padding:8px 12px;border-radius:8px;border:1px solid #e0e0e0;min-width:220px;flex:1}
-.btn{background:#1976d2;color:#fff;border:0;padding:8px 12px;border-radius:8px;cursor:pointer}
-.hint{margin-top:8px;font-size:13px;color:#666}
+.wrapper {
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #0b3d2e;
+  background: #fff;
+  font-size: 16px;
+  color: #0b3d2e;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input::placeholder {
+  color: #7a7a7a;
+}
+
+.input:focus {
+  border-color: #0b3d2e;
+  box-shadow: 0 0 0 2px rgba(11, 61, 46, 0.3);
+}

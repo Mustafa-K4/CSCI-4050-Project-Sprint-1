@@ -1,33 +1,176 @@
-.container{padding:20px;max-width:1100px;margin:0 auto}
-.header{margin-bottom:12px}
-.subtitle{color:#666;margin:4px 0 0}
-.grid{display:grid;grid-template-columns:1fr 320px;gap:20px}
-.left{background:#fff;padding:16px;border-radius:10px;box-shadow:0 8px 24px rgba(10,10,10,0.05)}
-.title{margin:0 0 6px}
-.meta{color:#666}
-.tickets{margin-top:14px}
-.ticketRow{display:flex;gap:12px;flex-wrap:wrap}
-.ticketRow label{display:flex;flex-direction:column;gap:6px}
-.ticketRow input{width:100px;padding:8px;border-radius:6px;border:1px solid #e6e6e6}
-.summary{margin-top:12px;display:flex;justify-content:space-between}
-.seatsSection{margin-top:18px}
-.screen{text-align:center;background:#f0f4ff;padding:6px;border-radius:6px;color:#333;margin-bottom:10px}
-.seatGrid{display:flex;flex-direction:column;gap:6px}
-.seatRow{display:flex;gap:6px}
-.seat{background:#f5f5f5;border:0;padding:6px 8px;border-radius:6px;cursor:pointer;min-width:36px}
-.seat:hover{transform:translateY(-3px)}
-.selected{background:#1976d2;color:#fff}
-.selectionSummary{margin-top:8px;color:#444}
-.right{display:flex;flex-direction:column;gap:12px}
-.card{background:#fff;padding:16px;border-radius:10px;box-shadow:0 8px 24px rgba(10,10,10,0.05)}
-.totalRow{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.total{font-size:18px;font-weight:700}
-.confirmBtn{background:#2e7d32;color:#fff;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;width:100%;margin-top:12px}
-.error{color:crimson}
-
-@media (max-width:900px){
-	.grid{grid-template-columns:1fr}
-	.right{order:2}
-	.left{order:1}
-}
-
+.container {
+	background-color: #0b3d2e;
+	min-height: 100vh;
+	padding: 30px;
+	color: #f5e6c8;
+	font-family: sans-serif;
+  }
+  
+  .header {
+	margin-bottom: 20px;
+  }
+  
+  .header h2 {
+	font-size: 32px;
+	font-weight: bold;
+	color: #f5e6c8;
+  }
+  
+  .grid {
+	display: grid;
+	grid-template-columns: 2fr 1fr;
+	gap: 30px;
+  }
+  
+  .left {
+	background: #f5e6c8;
+	color: #0b3d2e;
+	padding: 25px;
+	border-radius: 12px;
+  }
+  
+  .title {
+	font-size: 28px;
+	margin-bottom: 5px;
+  }
+  
+  .meta {
+	font-size: 18px;
+	margin-bottom: 20px;
+  }
+  
+  .tickets h4 {
+	font-size: 22px;
+	margin-bottom: 10px;
+  }
+  
+  .ticketRow {
+	display: flex;
+	gap: 20px;
+	margin-bottom: 15px;
+  }
+  
+  .ticketRow label {
+	display: flex;
+	flex-direction: column;
+	font-size: 16px;
+  }
+  
+  .ticketRow input {
+	margin-top: 5px;
+	padding: 6px;
+	border-radius: 6px;
+	border: 1px solid #0b3d2e;
+	width: 80px;
+  }
+  
+  .summary {
+	margin-top: 10px;
+	font-size: 18px;
+  }
+  
+  .seatsSection {
+	margin-top: 30px;
+  }
+  
+  .seatsSection h4 {
+	font-size: 22px;
+	margin-bottom: 10px;
+  }
+  
+  .screen {
+	background: #0b3d2e;
+	color: #f5e6c8;
+	text-align: center;
+	padding: 10px;
+	border-radius: 8px;
+	margin-bottom: 15px;
+	font-weight: bold;
+  }
+  
+  .seatGrid {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+  }
+  
+  .seatRow {
+	display: flex;
+	gap: 8px;
+  }
+  
+  .seat {
+	background: #d4c7a1;
+	border: none;
+	padding: 10px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 12px;
+	width: 40px;
+	height: 40px;
+  }
+  
+  .seat:hover {
+	background: #c2b48c;
+  }
+  
+  .selected {
+	background: #0b3d2e !important;
+	color: #f5e6c8 !important;
+  }
+  
+  .selectionSummary {
+	margin-top: 15px;
+	font-size: 18px;
+  }
+  
+  .right {
+	background: #f5e6c8;
+	color: #0b3d2e;
+	padding: 25px;
+	border-radius: 12px;
+	height: fit-content;
+  }
+  
+  .card h4 {
+	font-size: 24px;
+	margin-bottom: 10px;
+  }
+  
+  .totalRow {
+	display: flex;
+	justify-content: space-between;
+	font-size: 20px;
+	margin-top: 10px;
+  }
+  
+  .total {
+	font-weight: bold;
+  }
+  
+  .confirmBtn {
+	margin-top: 20px;
+	width: 100%;
+	padding: 12px;
+	background: #0b3d2e;
+	color: #f5e6c8;
+	border: none;
+	border-radius: 8px;
+	font-size: 18px;
+	cursor: pointer;
+  }
+  
+  .confirmBtn:disabled {
+	background: #6a6a6a;
+	cursor: not-allowed;
+  }
+  
+  .error {
+	color: red;
+	font-size: 18px;
+  }
+  
+  .loading {
+	font-size: 18px;
+  }
+  

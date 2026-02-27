@@ -43,52 +43,58 @@ export default function HomePage() {
   const anyMovies = currentlyRunning.length > 0 || comingSoon.length > 0;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.page}>
       <header className={styles.header}>
-        <h1>Cinema E-Booking System</h1>
+        <h1 className={styles.title}>CINEMA E‑BOOKING</h1>
       </header>
 
-      <section className={styles.controls}>
+      <div className={styles.controlsRow}>
         <SearchBar value={query} onChange={setQuery} />
         <FilterBar value={genre} onChange={setGenre} />
-      </section>
+      </div>
 
-      <section className={styles.grid}>
-        {loading && <p>Loading movies...</p>}
+      <main className={styles.content}>
+        {loading && <p className={styles.statusText}>Loading movies...</p>}
 
         {error && (
-          <div>
-            <p style={{ color: 'crimson' }}>Failed to load movies. Please try again.</p>
+          <div className={styles.errorBox}>
+            <p>Failed to load movies. Please try again.</p>
             <button onClick={() => window.location.reload()}>Retry</button>
           </div>
         )}
 
         {!loading && !error && !anyMovies && (
-          <p>{movies.length === 0 ? 'No movies available.' : 'No results found.'}</p>
+          <p className={styles.statusText}>
+            {movies.length === 0 ? 'No movies available.' : 'No results found.'}
+          </p>
         )}
 
         {!loading && !error && anyMovies && (
           <>
             {currentlyRunning.length > 0 && (
               <section className={styles.section}>
-                <h2>Currently Running</h2>
-                <div className={styles.grid}>
-                  {currentlyRunning.map(m => <MovieCard key={m._id} movie={m} />)}
+                <h2 className={styles.sectionTitle}>Currently Running</h2>
+                <div className={styles.movieGrid}>
+                  {currentlyRunning.map(m => (
+                    <MovieCard key={m._id} movie={m} />
+                  ))}
                 </div>
               </section>
             )}
 
             {comingSoon.length > 0 && (
               <section className={styles.section}>
-                <h2>Coming Soon</h2>
-                <div className={styles.grid}>
-                  {comingSoon.map(m => <MovieCard key={m._id} movie={m} />)}
+                <h2 className={styles.sectionTitle}>Coming Soon</h2>
+                <div className={styles.movieGrid}>
+                  {comingSoon.map(m => (
+                    <MovieCard key={m._id} movie={m} />
+                  ))}
                 </div>
               </section>
             )}
           </>
         )}
-      </section>
+      </main>
     </div>
   );
 }

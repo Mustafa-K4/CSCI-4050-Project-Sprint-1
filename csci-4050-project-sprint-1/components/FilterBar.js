@@ -1,34 +1,20 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+
 import styles from './FilterBar.module.css';
 
 export default function FilterBar({ value, onChange }) {
-  const [genres, setGenres] = useState(['All']);
-
-  useEffect(() => {
-    fetch('/api/movies')
-      .then(res => res.json())
-      .then(movies => {
-        const unique = ['All', ...new Set(movies.map(m => m.genre).filter(Boolean))];
-        setGenres(unique);
-      })
-      .catch(() => setGenres(['All', 'Drama', 'Sci-Fi', 'Comedy', 'Action', 'Horror']));
-  }, []);
-
   return (
-    <div className={styles.filter}>
-      <label>
-        Genre
-        <select value={value} onChange={e => onChange(e.target.value)}>
-          {genres.map(g => <option key={g} value={g}>{g}</option>)}
-        </select>
-      </label>
-      <label>
-        Show Date
-        <select disabled>
-          <option>Select Date</option>
-        </select>
-      </label>
-    </div>
+    <select
+      className={styles.select}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="All">All</option>
+      <option value="Action">Action</option>
+      <option value="Comedy">Comedy</option>
+      <option value="Drama">Drama</option>
+      <option value="Animation">Animation</option>
+      <option value="Sci-Fi">Sci-Fi</option>
+    </select>
   );
 }

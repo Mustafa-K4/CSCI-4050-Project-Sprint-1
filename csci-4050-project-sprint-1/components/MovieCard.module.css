@@ -1,25 +1,47 @@
-.card{
-	background:white;
-	border-radius:10px;
-	box-shadow:0 6px 18px rgba(15,15,15,0.06);
-	overflow:hidden;
-	display:flex;
-	flex-direction:column;
-	cursor:pointer;
-	transition:transform .18s ease, box-shadow .18s ease;
-}
-.card:focus{outline:2px solid #90caf9;outline-offset:2px}
-.card:hover{transform:translateY(-6px);box-shadow:0 12px 30px rgba(15,15,15,0.12)}
-.posterWrap{position:relative;overflow:hidden}
-.poster{width:100%;height:240px;object-fit:cover;display:block}
-.body{padding:12px}
-.title{margin:0 0 6px;font-size:16px}
-.meta{color:#666;font-size:13px;margin-bottom:8px}
-.rating{
-	position:absolute;right:8px;top:8px;background:rgba(0,0,0,0.7);color:#fff;padding:6px 8px;border-radius:6px;font-weight:600;font-size:13px
-}
-
-@media (max-width:520px){
-	.poster{height:180px}
-	.title{font-size:15px}
-}
+.card {
+	background: #f5e6c8;
+	color: #0b3d2e;
+	border-radius: 12px;
+	padding: 15px;
+	text-align: center;
+	box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+  }
+  
+  .poster {
+	width: 100%;
+	height: 260px;
+	object-fit: cover;
+	border-radius: 10px;
+	margin-bottom: 12px;
+  }
+  
+  .title {
+	font-size: 18px;
+	font-weight: bold;
+	margin-bottom: 6px;
+  }
+  
+  .stars {
+	font-size: 16px;
+	margin-bottom: 12px;
+	letter-spacing: 2px;
+  }
+  
+  .button {
+	display: inline-block;
+	background: #0b3d2e;
+	color: #f5e6c8;
+	padding: 8px 14px;
+	border-radius: 8px;
+	text-decoration: none;
+	font-size: 14px;
+	font-weight: bold;
+  }
+  
+  

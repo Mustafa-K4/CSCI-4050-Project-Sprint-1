@@ -1,43 +1,28 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import styles from './MovieCard.module.css';
 
 export default function MovieCard({ movie }) {
-  const router = useRouter();
-  const placeholder = 'https://via.placeholder.com/300x450?text=No+Poster';
-
-  function go() {
-    if (movie && movie._id) router.push(`/movies/${movie._id}`);
-  }
-
-  function onKey(e) {
-    if (e.key === 'Enter' || e.key === ' ') go();
-  }
+  const stars = Array(5)
+    .fill(0)
+    .map((_, i) => (i < Math.round(movie.rating || 0) ? '★' : '☆'));
 
   return (
-    <article
-      className={styles.card}
-      role="button"
-      tabIndex={0}
-      onClick={go}
-      onKeyDown={onKey}
-      aria-label={`Open details for ${movie?.title || 'movie'}`}
-    >
-      <div className={styles.posterWrap}>
-        <img
-          src={movie?.poster_url || placeholder}
-          alt={`${movie?.title || 'Movie'} poster`}
-          className={styles.poster}
-          loading="lazy"
-        />
-        <div className={styles.rating}>{movie?.rating ?? '—'}</div>
-      </div>
+    <div className={styles.card}>
+      <img
+        src={movie.poster_url}
+        alt={movie.title}
+        className={styles.poster}
+      />
 
-      <div className={styles.body}>
-        <h3 className={styles.title}>{movie?.title}</h3>
-      </div>
-    </article>
+      <h3 className={styles.title}>{movie.title}</h3>
+
+      <div className={styles.stars}>{stars.join(' ')}</div>
+
+      <Link href={`/movies/${movie._id}`} className={styles.button}>
+        View Details
+      </Link>
+    </div>
   );
 }
