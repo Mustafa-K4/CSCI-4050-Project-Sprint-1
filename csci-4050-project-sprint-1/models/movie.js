@@ -5,10 +5,6 @@ const movieSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
-    poster_url: {
-        type: String,
-        required: false,
-    },
     rating: {
         type: String,
         required: false,

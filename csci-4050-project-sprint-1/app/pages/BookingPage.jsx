@@ -1,22 +1,25 @@
+'use client';
+
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useSearchParams } from 'next/navigation';
 import styles from './BookingPage.module.css';
 
 const PRICES = { adult: 12, child: 8, senior: 10 };
 
 function formatTime(t) {
   if (!t) return '-';
-  const [hh, mm] = t.split(':').map(n => Number(n));
+  const [hh, mm] = t.split(':').map(Number);
   const ampm = hh >= 12 ? 'PM' : 'AM';
   const hour = ((hh + 11) % 12) + 1;
   return `${hour}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 
 export default function BookingPage() {
-  const { id } = useParams();
-  const { search } = useLocation();
-  const params = useMemo(() => new URLSearchParams(search), [search]);
-  const selectedTime = params.get('time') || '';
+  const params = useParams();
+  const searchParams = useSearchParams();
+
+  const id = params?.id;
+  const selectedTime = searchParams.get('time') || '';
 
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,16 +28,15 @@ export default function BookingPage() {
   const [adult, setAdult] = useState(1);
   const [child, setChild] = useState(0);
   const [senior, setSenior] = useState(0);
-
-  // Seats: represent as a Set of seat keys like 'r-c'
   const [selectedSeats, setSelectedSeats] = useState(new Set());
 
   useEffect(() => {
+    if (!id) return;
     const ctl = new AbortController();
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:5000/movies/${id}`, { signal: ctl.signal })
+    fetch(`/api/movies/${id}`, { signal: ctl.signal })
       .then(res => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
@@ -55,33 +57,25 @@ export default function BookingPage() {
     const key = `${r}-${c}`;
     setSelectedSeats(prev => {
       const copy = new Set(prev);
-      if (copy.has(key)) copy.delete(key);
-      else copy.add(key);
+      copy.has(key) ? copy.delete(key) : copy.add(key);
       return copy;
     });
   }
 
   const seatsArray = useMemo(() => {
-    const rows = 8;
-    const cols = 8;
-    const arr = [];
-    for (let r = 0; r < rows; r++) {
-      const row = [];
-      for (let c = 0; c < cols; c++) row.push({ r, c });
-      arr.push(row);
-    }
-    return arr;
+    return Array.from({ length: 8 }, (_, r) =>
+      Array.from({ length: 8 }, (_, c) => ({ r, c }))
+    );
   }, []);
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h2>Booking</h2>
-        <p className={styles.subtitle}>Movie #{id}</p>
       </header>
 
       {loading && <p>Loading movie...</p>}
-      {error && <p className={styles.error}>Error: {error}</p>}
+      {error && <p className={styles.error}>Failed to load movie. Please go back and try again.</p>}
 
       {!loading && !error && movie && (
         <div className={styles.grid}>
@@ -102,7 +96,6 @@ export default function BookingPage() {
                   <input type="number" min={0} value={senior} onChange={e => setSenior(Math.max(0, Number(e.target.value || 0)))} />
                 </label>
               </div>
-
               <div className={styles.summary}>
                 <div>Tickets: <strong>{ticketCount}</strong></div>
                 <div>Total: <strong>${subtotal.toFixed(2)}</strong></div>
@@ -126,15 +119,16 @@ export default function BookingPage() {
                           onClick={() => toggleSeat(r, c)}
                           aria-pressed={isSelected}
                           aria-label={`Seat ${r + 1}-${c + 1}`}
-                        >{r + 1}-{c + 1}</button>
+                        >
+                          {r + 1}-{c + 1}
+                        </button>
                       );
                     })}
                   </div>
                 ))}
               </div>
-
               <div className={styles.selectionSummary}>
-                <div>Selected seats: <strong>{selectedSeats.size}</strong></div>
+                Selected seats: <strong>{selectedSeats.size}</strong>
               </div>
             </section>
           </div>
@@ -147,8 +141,12 @@ export default function BookingPage() {
               <p>Tickets: {ticketCount}</p>
               <p>Seats selected: {selectedSeats.size}</p>
               <hr />
-              <div className={styles.totalRow}>Total: <span className={styles.total}>${subtotal.toFixed(2)}</span></div>
-              <button className={styles.confirmBtn} disabled={ticketCount === 0}>Proceed to Payment</button>
+              <div className={styles.totalRow}>
+                Total: <span className={styles.total}>${subtotal.toFixed(2)}</span>
+              </div>
+              <button className={styles.confirmBtn} disabled={ticketCount === 0}>
+                Proceed to Payment
+              </button>
             </div>
           </aside>
         </div>
