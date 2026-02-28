@@ -43,7 +43,7 @@ export default function SearchBar({ value: propValue = '', onChange, onResults }
     setError(null);
     setNoResults(false);
 
-    fetch(`http://localhost:5000/movies/search?title=${encodeURIComponent(q)}`, { signal: ctl.current.signal })
+    fetch(`/api/movies/search?title=${encodeURIComponent(q)}`, { signal: ctl.current.signal })
       .then(res => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
