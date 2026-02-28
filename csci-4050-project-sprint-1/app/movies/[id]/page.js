@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import styles from './page.module.css';
+import { getYouTubeEmbedUrl } from '../../../utils/videoUtils';
 
 const SHOWTIMES = ['14:00', '17:00', '20:00'];
 const placeholder = 'https://via.placeholder.com/400x600?text=No+Poster';
@@ -96,7 +97,7 @@ export default function MovieDetailsPage() {
             {movie?.trailer_url && (
               <div className={styles.trailerWrap}>
                 <iframe
-                  src={movie.trailer_url}
+                  src={getYouTubeEmbedUrl(movie.trailer_url)}
                   title={`${movie?.title || 'Movie'} trailer`}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

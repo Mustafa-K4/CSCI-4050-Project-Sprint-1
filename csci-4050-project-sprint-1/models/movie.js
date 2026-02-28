@@ -29,6 +29,10 @@ const movieSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+     trailer_url: {
+        type: String,
+        required: false,
+    },
 }, { collection: 'Movies' })
 
 export default mongoose.models.Movie || mongoose.model('Movie', movieSchema)
