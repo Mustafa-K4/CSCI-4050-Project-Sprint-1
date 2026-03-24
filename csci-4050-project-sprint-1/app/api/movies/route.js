@@ -10,7 +10,7 @@ export async function GET(request) {
     // Fetch all movies from the collection
     const movies = await Movie.find({});
     console.log(`Found ${movies.length} movies in database`);
-    console.log('Movies:', movies);
+    //console.log('Movies:', movies);
 
     // Return the movies as JSON
     return Response.json(movies, {

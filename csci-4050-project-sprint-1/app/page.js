@@ -36,7 +36,8 @@ export default function HomePage() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, []);
+  }, []); 
+;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
