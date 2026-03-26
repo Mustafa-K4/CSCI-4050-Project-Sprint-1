@@ -34,6 +34,8 @@ jobs:
 
       - name: Build project
         run: npm run build --if-present
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Run tests
         run: npm test
