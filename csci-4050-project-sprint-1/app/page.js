@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link';
 import React, { useState, useEffect, useMemo } from 'react';
 import MovieCard from '../components/MovieCard';
 import SearchBar from '../components/SearchBar';
@@ -58,6 +59,9 @@ export default function HomePage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Cinema E-Booking System</h1>
+        <Link href="/login" className={styles.loginButton}>
+          Login
+        </Link>
       </header>
 
       <section className={styles.controls}>

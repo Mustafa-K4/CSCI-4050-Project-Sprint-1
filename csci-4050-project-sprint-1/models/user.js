@@ -16,6 +16,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    role: {
+      type: String,
+      enum: ['admin', 'customer'],
+      default: 'customer',
+      trim: true,
+      lowercase: true,
+    },
     email: {
       type: String,
       required: true,
@@ -39,12 +46,20 @@ const userSchema = new mongoose.Schema(
       default: 'unverified',
       trim: true,
     },
+    resetTokenHash: {
+      type: String,
+      default: null,
+    },
+    resetTokenExpiresAt: {
+      type: Date,
+      default: null,
+    },
     favorites: {
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
   },
-  { collection: 'Users' }
+  { collection: 'Users', timestamps: true }
 )
 
 export default mongoose.models.User || mongoose.model('User', userSchema)
