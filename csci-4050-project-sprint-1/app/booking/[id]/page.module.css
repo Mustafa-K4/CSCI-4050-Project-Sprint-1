@@ -18,6 +18,16 @@ body{background:#d4ccc0;margin:0;padding:0}
 .summary{display:none}
 .seatsSection{margin:0;padding:0;border:none}
 .seatsSection h4{margin:0 0 16px;font-size:15px;font-weight:600;color:#2d5016;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-transform:uppercase;letter-spacing:0.5px}
+.paymentSection{margin:20px 0 0;padding:0;border:none}
+.paymentSection h4{margin:0 0 16px;font-size:15px;font-weight:600;color:#2d5016;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-transform:uppercase;letter-spacing:0.5px}
+.paymentGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.paymentGrid label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:#333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.paymentGrid label:first-child{grid-column:1 / -1}
+.paymentGrid input{width:100%;padding:10px 12px;border:2px solid #dcc7b8;border-radius:20px;font-size:14px;background:#f9f7f5;color:#333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;appearance:none}
+.paymentGrid input:focus{outline:none;border-color:#2d5016;background:#fff}
+.payBtn{background:#3d5f28;color:#fff;padding:10px 12px;border-radius:8px;border:none;cursor:pointer;width:100%;margin-top:12px;font-weight:600;font-size:14px;transition:all 0.2s;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.payBtn:hover{filter:brightness(0.95)}
+.success{color:#1b5e20;background:#e8f5e9;padding:10px;border-radius:6px;margin-top:12px}
 .screen{display:none}
 .seatGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-bottom:20px}
 .seatRow{display:contents}
@@ -56,5 +66,6 @@ body{background:#d4ccc0;margin:0;padding:0}
 	.pageTitle{font-size:24px}
 	.left{padding:20px}
 	.ticketRow{gap:12px}
+	.paymentGrid{grid-template-columns:1fr}
 	.seatGrid{grid-template-columns:repeat(10,1fr);gap:4px}
 }

@@ -17,7 +17,7 @@ function formatTime(t) {
 export default function BookingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  
+
   const id = params?.id;
   const selectedTime = searchParams?.get('time') || '';
 
@@ -28,8 +28,13 @@ export default function BookingPage() {
   const [adult, setAdult] = useState(1);
   const [child, setChild] = useState(0);
   const [senior, setSenior] = useState(0);
-
   const [selectedSeats, setSelectedSeats] = useState(new Set());
+
+  const [cardNumber, setCardNumber] = useState('');
+  const [expirationDate, setExpirationDate] = useState('');
+  const [cvv, setCvv] = useState('');
+  const [paymentError, setPaymentError] = useState('');
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -75,6 +80,64 @@ export default function BookingPage() {
       else copy.add(key);
       return copy;
     });
+    setPaymentSuccess(false);
+    setPaymentError('');
+  }
+
+  function validatePaymentInputs() {
+    const normalizedCard = cardNumber.replace(/\s+/g, '');
+    const cardOk = /^\d{16}$/.test(normalizedCard);
+    const expiryOk = /^(0[1-9]|1[0-2])\/(\d{2})$/.test(expirationDate);
+    const cvvOk = /^\d{3,4}$/.test(cvv);
+
+    if (!cardOk) return 'Enter a valid 16-digit card number';
+    if (!expiryOk) return 'Expiration date must be in MM/YY format';
+    if (!cvvOk) return 'Enter a valid 3 or 4 digit CVV';
+
+    return '';
+  }
+
+  function handlePayment() {
+    if (ticketCount === 0 || selectedSeats.size === 0) {
+      setPaymentSuccess(false);
+      setPaymentError('Select at least one ticket and seat before payment');
+      return;
+    }
+
+    const validationMessage = validatePaymentInputs();
+    if (validationMessage) {
+      setPaymentSuccess(false);
+      setPaymentError(validationMessage);
+      return;
+    }
+
+    setPaymentError('');
+    setPaymentSuccess(true);
+  }
+
+  function handleCardNumberChange(value) {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 16);
+    const grouped = digitsOnly.replace(/(\d{4})(?=\d)/g, '$1 ');
+    setCardNumber(grouped);
+    setPaymentSuccess(false);
+    setPaymentError('');
+  }
+
+  function handleExpirationDateChange(value) {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 4);
+    let formatted = digitsOnly;
+    if (digitsOnly.length >= 3) {
+      formatted = `${digitsOnly.slice(0, 2)}/${digitsOnly.slice(2)}`;
+    }
+    setExpirationDate(formatted);
+    setPaymentSuccess(false);
+    setPaymentError('');
+  }
+
+  function handleCvvChange(value) {
+    setCvv(value.replace(/\D/g, '').slice(0, 4));
+    setPaymentSuccess(false);
+    setPaymentError('');
   }
 
   const seatsArray = useMemo(() => {
@@ -106,29 +169,38 @@ export default function BookingPage() {
               <div className={styles.ticketRow}>
                 <label>
                   Adult ($12)
-                  <input 
-                    type="number" 
-                    min={0} 
-                    value={adult} 
-                    onChange={e => setAdult(Math.max(0, Number(e.target.value || 0)))} 
+                  <input
+                    type="number"
+                    min={0}
+                    value={adult}
+                    onChange={e => {
+                      setAdult(Math.max(0, Number(e.target.value || 0)));
+                      setPaymentSuccess(false);
+                    }}
                   />
                 </label>
                 <label>
                   Child ($8)
-                  <input 
-                    type="number" 
-                    min={0} 
-                    value={child} 
-                    onChange={e => setChild(Math.max(0, Number(e.target.value || 0)))} 
+                  <input
+                    type="number"
+                    min={0}
+                    value={child}
+                    onChange={e => {
+                      setChild(Math.max(0, Number(e.target.value || 0)));
+                      setPaymentSuccess(false);
+                    }}
                   />
                 </label>
                 <label>
                   Senior ($10)
-                  <input 
-                    type="number" 
-                    min={0} 
-                    value={senior} 
-                    onChange={e => setSenior(Math.max(0, Number(e.target.value || 0)))} 
+                  <input
+                    type="number"
+                    min={0}
+                    value={senior}
+                    onChange={e => {
+                      setSenior(Math.max(0, Number(e.target.value || 0)));
+                      setPaymentSuccess(false);
+                    }}
                   />
                 </label>
               </div>
@@ -158,12 +230,57 @@ export default function BookingPage() {
               </div>
             </section>
 
-            <button 
-              className={styles.confirmBtn} 
-              disabled={ticketCount === 0 || selectedSeats.size === 0}
+            <section className={styles.paymentSection}>
+              <h4>Payment</h4>
+              <div className={styles.paymentGrid}>
+                <label>
+                  Card Number
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="1234 5678 9012 3456"
+                    value={cardNumber}
+                    onChange={e => handleCardNumberChange(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Expiration Date
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="MM/YY"
+                    value={expirationDate}
+                    onChange={e => handleExpirationDateChange(e.target.value)}
+                  />
+                </label>
+                <label>
+                  CVV
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="123"
+                    value={cvv}
+                    onChange={e => handleCvvChange(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              {paymentError && <p className={styles.error}>{paymentError}</p>}
+              {paymentSuccess && <p className={styles.success}>Payment successful. You can now complete booking.</p>}
+
+              <button type="button" className={styles.payBtn} onClick={handlePayment}>
+                Pay Now
+              </button>
+            </section>
+
+            <button
+              className={styles.confirmBtn}
+              disabled={ticketCount === 0 || selectedSeats.size === 0 || !paymentSuccess}
             >
-              See the Details
+              Confirm Booking
             </button>
+
+            <p className={styles.meta}>Total: ${subtotal.toFixed(2)} • Seats selected: {selectedSeats.size}</p>
           </div>
         </div>
       ) : !loading && !error ? (
