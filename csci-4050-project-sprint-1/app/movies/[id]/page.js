@@ -25,6 +25,23 @@ export default function MovieDetailsPage() {
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userId, setUserId] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+  const [favMessage, setFavMessage] = useState('');
+
+  useEffect(() => {
+    const rawUser = localStorage.getItem('user');
+    if (!rawUser) return;
+
+    try {
+      const parsedUser = JSON.parse(rawUser);
+      const parsedId = parsedUser?.id || parsedUser?._id || '';
+      if (parsedId) setUserId(parsedId);
+    } catch {
+      setUserId('');
+    }
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -59,6 +76,70 @@ export default function MovieDetailsPage() {
     return () => ctl.abort();
   }, [id]);
 
+  useEffect(() => {
+    if (!id || !userId) return;
+
+    const ctl = new AbortController();
+
+    fetch(`/api/users/${userId}`, { signal: ctl.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        const profile = data?.user || {};
+        const favorites = Array.isArray(profile.favoriteMovies)
+          ? profile.favoriteMovies
+          : Array.isArray(profile.favorites)
+            ? profile.favorites
+            : [];
+
+        const favoriteIds = favorites.map(item => (typeof item === 'string' ? item : String(item?._id || item?.id || '')));
+        setIsFavorite(favoriteIds.includes(String(id)));
+      })
+      .catch(() => {
+        setIsFavorite(false);
+      });
+
+    return () => ctl.abort();
+  }, [id, userId]);
+
+  async function handleFavoriteClick() {
+    if (!id) return;
+
+    if (!userId) {
+      setFavMessage('Please log in to favorite movies.');
+      return;
+    }
+
+    setFavLoading(true);
+    setFavMessage('');
+
+    try {
+      const response = await fetch(`/api/users/${userId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ movieId: id }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.success) {
+        setFavMessage(data?.error || 'Failed to add favorite');
+        return;
+      }
+
+      setIsFavorite(true);
+      setFavMessage('Added to favorites.');
+    } catch (requestError) {
+      setFavMessage(requestError.message || 'Failed to add favorite');
+    } finally {
+      setFavLoading(false);
+    }
+  }
+
   function handleShowtime(time) {
     if (!id || !time) return;
     const params = new URLSearchParams({ time });
@@ -84,11 +165,23 @@ export default function MovieDetailsPage() {
               className={styles.poster} 
             />
             <div className={styles.infoBlock}>
-              <h3 className={styles.title}>{movie?.title || 'Untitled'}</h3>
+              <div className={styles.titleRow}>
+                <h3 className={styles.title}>{movie?.title || 'Untitled'}</h3>
+                <button
+                  type="button"
+                  className={`${styles.favoriteBtn} ${isFavorite ? styles.favoriteActive : ''}`}
+                  onClick={handleFavoriteClick}
+                  disabled={favLoading}
+                  aria-label={isFavorite ? 'Favorited' : 'Add to favorites'}
+                >
+                  {isFavorite ? '♥' : '♡'}
+                </button>
+              </div>
               <div className={styles.metaRow}>
                 <span className={styles.rating}>⭐ {movie?.rating ?? '—'}</span>
                 <span className={styles.genre}>{movie?.genre || 'Unknown'}</span>
               </div>
+              {favMessage && <p className={styles.favoriteMessage}>{favMessage}</p>}
               <p className={styles.description}>{movie?.description || 'No description available'}</p>
             </div>
           </div>

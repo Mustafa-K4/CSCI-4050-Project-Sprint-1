@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
       type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
+    favoriteMovies: {
+      type: [mongoose.Schema.Types.Mixed],
+      default: [],
+    },
   },
   { collection: 'Users' }
 )
