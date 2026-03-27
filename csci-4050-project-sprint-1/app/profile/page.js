@@ -72,14 +72,14 @@ export default function ProfilePage() {
         const storedUser = getStoredUser()
 
         if (!storedUser) {
-          setError('You must be logged in to view your profile.')
+          setError('Please sign in to view your profile.')
           return
         }
 
         const id = getUserId(storedUser)
 
         if (!id) {
-          setError('Could not determine logged-in user.')
+          setError('We could not determine the current user. Please sign in again.')
           return
         }
 
@@ -89,7 +89,7 @@ export default function ProfilePage() {
         const data = await response.json()
 
         if (!response.ok || !data?.success) {
-          setError(data?.error || 'Failed to load profile data.')
+          setError(data?.error || 'We could not load your profile details right now. Please try again.')
           return
         }
 
@@ -122,7 +122,7 @@ export default function ProfilePage() {
 
         setFavoriteMovies(favoriteItems)
       } catch (requestError) {
-        setError(requestError.message || 'Failed to load profile.')
+        setError(requestError.message || 'We could not load your profile right now. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -181,12 +181,12 @@ export default function ProfilePage() {
     setSuccess('')
 
     if (!userId) {
-      setError('Could not determine logged-in user.')
+      setError('We could not determine the current user. Please sign in again.')
       return
     }
 
     if (!profile.name.trim()) {
-      setError('Name is required.')
+      setError('Please enter your name before saving.')
       return
     }
 
@@ -212,7 +212,7 @@ export default function ProfilePage() {
       const data = await response.json()
 
       if (!response.ok || !data?.success) {
-        setError(data?.error || 'Failed to save profile changes.')
+        setError(data?.error || 'We could not save your profile changes. Please review your details and try again.')
         return
       }
 
@@ -236,9 +236,9 @@ export default function ProfilePage() {
           : cards
 
       setCards(updatedCards.length > 0 ? updatedCards : [createEmptyCard()])
-      setSuccess('Profile updated successfully.')
+      setSuccess('Your profile changes have been saved successfully.')
     } catch (requestError) {
-      setError(requestError.message || 'Failed to save profile changes.')
+      setError(requestError.message || 'We could not save your profile changes. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -262,6 +262,9 @@ export default function ProfilePage() {
             <p className={styles.eyebrow}>Account</p>
             <h1 className={styles.title}>Profile</h1>
             <p className={styles.subtitle}>Manage your personal details with local page state only.</p>
+            <p className={styles.helperText}>
+              Fields marked <span className={styles.required}>*</span> are required.
+            </p>
           </div>
           {userId && (
             <div className={styles.userBadge}>
@@ -271,15 +274,27 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {error && <p className={styles.error}>{error}</p>}
-        {success && <p className={styles.success}>{success}</p>}
+        {error && (
+          <div className={`${styles.notice} ${styles.error}`} role="alert" aria-live="polite">
+            <p className={styles.noticeTitle}>There was a problem</p>
+            <p className={styles.noticeText}>{error}</p>
+          </div>
+        )}
+        {success && (
+          <div className={`${styles.notice} ${styles.success}`} role="status" aria-live="polite">
+            <p className={styles.noticeTitle}>Changes saved</p>
+            <p className={styles.noticeText}>{success}</p>
+          </div>
+        )}
 
         <div className={styles.layout}>
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Profile details</h2>
             <form className={styles.form}>
               <label className={styles.field}>
-                <span className={styles.label}>Name</span>
+                <span className={styles.label}>
+                  Name <span className={styles.required}>*</span>
+                </span>
                 <input
                   type="text"
                   className={styles.input}
@@ -300,7 +315,9 @@ export default function ProfilePage() {
               </label>
 
               <label className={styles.field}>
-                <span className={styles.label}>Address</span>
+                <span className={styles.label}>
+                  Address
+                </span>
                 <input
                   type="text"
                   className={styles.input}
@@ -335,7 +352,9 @@ export default function ProfilePage() {
                   </div>
 
                   <label className={styles.field}>
-                    <span className={styles.label}>Card number</span>
+                    <span className={styles.label}>
+                      Card number <span className={styles.required}>*</span>
+                    </span>
                     <input
                       type="text"
                       className={styles.input}
@@ -347,7 +366,9 @@ export default function ProfilePage() {
 
                   <div className={styles.cardGrid}>
                     <label className={styles.field}>
-                      <span className={styles.label}>Expiration date</span>
+                      <span className={styles.label}>
+                        Expiration date <span className={styles.required}>*</span>
+                      </span>
                       <input
                         type="text"
                         className={styles.input}
@@ -358,7 +379,9 @@ export default function ProfilePage() {
                     </label>
 
                     <label className={styles.field}>
-                      <span className={styles.label}>CVV</span>
+                      <span className={styles.label}>
+                        CVV <span className={styles.required}>*</span>
+                      </span>
                       <input
                         type="text"
                         className={styles.input}
@@ -412,6 +435,7 @@ export default function ProfilePage() {
             className={styles.saveButton}
             onClick={handleSaveChanges}
             disabled={saving || loading}
+            aria-disabled={saving || loading}
           >
             {saving ? 'Saving...' : 'Save Changes'}
           </button>

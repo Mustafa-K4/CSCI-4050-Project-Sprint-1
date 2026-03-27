@@ -44,6 +44,12 @@
   color: #645845;
 }
 
+.helperText {
+  margin: 10px 0 0;
+  color: #7c6c55;
+  font-size: 0.92rem;
+}
+
 .userBadge {
   min-width: 180px;
   padding: 12px 14px;
@@ -121,6 +127,10 @@
   font-weight: 500;
 }
 
+.required {
+  color: #b42318;
+}
+
 .input {
   height: 42px;
   border: 1px solid #d8d0c4;
@@ -141,20 +151,32 @@
   color: #666;
 }
 
-.error {
-  border-radius: 8px;
-  padding: 10px 12px;
+.notice {
+  border-radius: 10px;
+  padding: 12px 14px;
   margin: 0 0 20px;
+}
+
+.error {
   color: #b42318;
   background: #ffebee;
+  border: 1px solid #f3c7cd;
 }
 
 .success {
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin: 0 0 20px;
   color: #1b5e20;
   background: #e8f5e9;
+  border: 1px solid #cde8cf;
+}
+
+.noticeTitle {
+  margin: 0;
+  font-weight: 700;
+}
+
+.noticeText {
+  margin: 4px 0 0;
+  line-height: 1.5;
 }
 
 .statusText {
@@ -184,6 +206,7 @@
 .saveButton:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .cardList {
