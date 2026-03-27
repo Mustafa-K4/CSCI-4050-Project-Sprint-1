@@ -7,7 +7,6 @@ import SearchBar from '../components/SearchBar';
 import FilterBar from '../components/FilterBar';
 import styles from './HomePage.module.css';
 
-
 export default function HomePage() {
 
   const [movies, setMovies] = useState([]);
@@ -37,21 +36,32 @@ export default function HomePage() {
       .finally(() => setLoading(false));
 
     return () => ctl.abort();
-  }, []); 
-;
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const source = externalSearchResults !== null ? externalSearchResults : movies;
+
     return source.filter(m => {
-      const matchesQuery = externalSearchResults !== null ? true : (!q || (m.title || '').toLowerCase().includes(q) || (m.description || '').toLowerCase().includes(q));
+      const matchesQuery =
+        externalSearchResults !== null
+          ? true
+          : (!q ||
+              (m.title || '').toLowerCase().includes(q) ||
+              (m.description || '').toLowerCase().includes(q));
+
       const matchesGenre = genre === 'All' || (m.genre || '') === genre;
+
       return matchesQuery && matchesGenre;
     });
   }, [movies, query, genre, externalSearchResults]);
 
-  const currentlyRunning = filtered.filter(m => (m.status || '').toLowerCase().includes('run'));
-  const comingSoon = filtered.filter(m => (m.status || '').toLowerCase().includes('coming'));
+  const currentlyRunning = filtered.filter(m =>
+    (m.status || '').toLowerCase().includes('run')
+  );
+  const comingSoon = filtered.filter(m =>
+    (m.status || '').toLowerCase().includes('coming')
+  );
 
   const anyMovies = currentlyRunning.length > 0 || comingSoon.length > 0;
 
@@ -59,18 +69,30 @@ export default function HomePage() {
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Cinema E-Booking System</h1>
-        <Link href="/login" className={styles.loginButton}>
-          Login
-        </Link>
+
+        <div className={styles.authButtons}>
+          <Link href="/login" className={styles.loginButton}>
+            Login
+          </Link>
+
+          <Link href="/register" className={styles.loginButton}>
+            Register
+          </Link>
+        </div>
       </header>
 
       <section className={styles.controls}>
-        <SearchBar value={query} onChange={v => { setQuery(v); }} onResults={results => setExternalSearchResults(results)} />
+        <SearchBar
+          value={query}
+          onChange={v => setQuery(v)}
+          onResults={results => setExternalSearchResults(results)}
+        />
         <FilterBar value={genre} onChange={setGenre} />
       </section>
 
       <section className={styles.grid}>
         {loading && <p>Loading movies...</p>}
+
         {error && (
           <div>
             <p style={{ color: 'crimson' }}>Error: {error}</p>
@@ -86,7 +108,9 @@ export default function HomePage() {
               <section className={styles.section}>
                 <h2>Currently Running</h2>
                 <div className={styles.grid}>
-                  {currentlyRunning.map(m => <MovieCard key={m._id} movie={m} />)}
+                  {currentlyRunning.map(m => (
+                    <MovieCard key={m._id} movie={m} />
+                  ))}
                 </div>
               </section>
             )}
@@ -95,7 +119,9 @@ export default function HomePage() {
               <section className={styles.section}>
                 <h2>Coming Soon</h2>
                 <div className={styles.grid}>
-                  {comingSoon.map(m => <MovieCard key={m._id} movie={m} />)}
+                  {comingSoon.map(m => (
+                    <MovieCard key={m._id} movie={m} />
+                  ))}
                 </div>
               </section>
             )}

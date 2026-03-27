@@ -1,20 +1,26 @@
 import bcrypt from 'bcrypt'
+import crypto from 'crypto'
 import dbConnect from '../../../../database/db'
 import User from '../../../../models/user'
+import { sendVerificationEmail } from '../../../../lib/auth/email'
 
 export async function POST(request) {
   try {
     await dbConnect()
 
     const body = await request.json()
-    const name = body.name && String(body.name).trim()
-    const username = body.username && String(body.username).trim()
-    const email = body.email && String(body.email).trim().toLowerCase()
-    const password = body.password && String(body.password)
-    const role = body.role && String(body.role).toLowerCase() === 'admin' ? 'admin' : 'customer'
+    const name = body.name?.trim()
+    const username = body.username?.trim()
+    const email = body.email?.trim().toLowerCase()
+    const password = body.password
+    const confirmPassword = body.confirmPassword
 
-    if (!name || !email || !password) {
-      return Response.json({ error: 'name, email, and password are required' }, { status: 400 })
+    if (!name || !username || !email || !password || !confirmPassword) {
+      return Response.json({ error: 'All fields are required' }, { status: 400 })
+    }
+
+    if (password !== confirmPassword) {
+      return Response.json({ error: 'Passwords do not match' }, { status: 400 })
     }
 
     const existingUser = await User.findOne({ email })
@@ -23,46 +29,30 @@ export async function POST(request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
+    const verificationToken = crypto.randomBytes(32).toString('hex')
 
-    const newUser = await User.create({
+    await User.create({
       name,
       username,
       email,
       pswrd: hashedPassword,
-      role,
+      role: 'customer',
+      verification: 'unverified',
+      resetTokenHash: verificationToken,
+      resetTokenExpiresAt: Date.now() + 1000 * 60 * 60 * 24
+    })
+
+    await sendVerificationEmail({
+      to: email,
+      token: verificationToken
     })
 
     return Response.json(
-      {
-        success: true,
-        user: {
-          id: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        },
-      },
-      {
-        status: 201,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      },
+      { success: true, message: 'Registration successful. Check your email to verify your account.' },
+      { status: 201 }
     )
   } catch (error) {
-    console.error('Error in register route:', error)
-    const isDup = error && error.code === 11000
-    return Response.json(
-      {
-        success: false,
-        error: isDup ? 'Email already in use' : error.message || 'Registration failed',
-      },
-      {
-        status: isDup ? 409 : 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      },
-    )
+    console.error(error)
+    return Response.json({ error: 'Registration failed' }, { status: 500 })
   }
 }
