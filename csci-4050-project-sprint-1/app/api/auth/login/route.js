@@ -57,6 +57,12 @@ export async function POST(request) {
         message: 'Login successful.',
         role,
         redirectTo: role === 'admin' ? '/admin' : '/customer',
+        user: {
+          id: user._id.toString(),
+          name: user.name || '',
+          email: user.email || '',
+          role,
+        },
       },
       { status: 200 }
     )

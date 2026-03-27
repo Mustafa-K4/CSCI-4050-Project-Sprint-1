@@ -12,6 +12,7 @@ export default function LogoutButton() {
     setLoading(true)
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
+      localStorage.removeItem('user')
     } finally {
       router.push('/login')
       router.refresh()

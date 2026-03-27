@@ -32,6 +32,10 @@ export default function LoginForm() {
         return
       }
 
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user))
+      }
+
       setMessage('Login successful. Redirecting...')
       router.push(data.redirectTo || '/customer')
       router.refresh()
