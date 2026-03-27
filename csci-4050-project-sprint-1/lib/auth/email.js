@@ -1,13 +1,14 @@
-export async function sendProfileChangeEmail({ to, name, changedFields }) {
-  const fieldList = changedFields.join(', ')
-  const subject = 'Cinema account profile updated'
-  const plainMessage = `Hi ${name || 'User'}, your profile information was updated (${fieldList}). If this was not you, reset your password immediately.`
+export async function sendVerificationEmail({ to, token }) {
+  const subject = 'Verify your Cinema E‑Booking account'
+  const verifyUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/register/verify?token=${token}`
+
+  const plainMessage = `Click the link to verify your account: ${verifyUrl}`
 
   const sendGridApiKey = process.env.SENDGRID_API_KEY
   const emailFrom = process.env.EMAIL_FROM
 
   if (!sendGridApiKey || !emailFrom) {
-    console.log(`[EmailNotification] to=${to} subject="${subject}" body="${plainMessage}"`)
+    console.log(`[EmailVerification] to=${to} subject="${subject}" body="${plainMessage}"`)
     return { delivered: false, provider: 'console' }
   }
 
@@ -27,7 +28,7 @@ export async function sendProfileChangeEmail({ to, name, changedFields }) {
 
   if (!response.ok) {
     const details = await response.text()
-    throw new Error(`Failed to send profile update email: ${details}`)
+    throw new Error(`Failed to send verification email: ${details}`)
   }
 
   return { delivered: true, provider: 'sendgrid' }
