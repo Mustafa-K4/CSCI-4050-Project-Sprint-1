@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import dbConnect from '../../../../database/db'
 import User from '../../../../models/user'

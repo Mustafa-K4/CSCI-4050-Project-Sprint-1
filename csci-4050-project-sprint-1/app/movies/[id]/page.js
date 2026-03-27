@@ -17,6 +17,18 @@ function formatTime(t) {
   return `${hour}:${String(mm).padStart(2, '0')} ${ampm}`;
 }
 
+function getStoredUserId() {
+  if (typeof window === 'undefined') return null;
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return null;
+  try {
+    const user = JSON.parse(userStr);
+    return user.id || user._id || user.userId || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function MovieDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -25,6 +37,8 @@ export default function MovieDetailsPage() {
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -59,10 +73,44 @@ export default function MovieDetailsPage() {
     return () => ctl.abort();
   }, [id]);
 
+  useEffect(() => {
+    const userId = getStoredUserId();
+    if (!userId || !id) return;
+
+    fetch(`http://localhost:3000/api/users/${userId}`)
+      .then(res => res.json())
+      .then(data => {
+        const favoriteMovies = data.favoriteMovies || data.favorites || [];
+        setIsFavorited(favoriteMovies.some(fav => fav === id || fav._id === id));
+      })
+      .catch(err => console.error('Failed to load favorite status:', err));
+  }, [id]);
+
   function handleShowtime(time) {
     if (!id || !time) return;
     const params = new URLSearchParams({ time });
     router.push(`/booking/${id}?${params.toString()}`);
+  }
+
+  async function handleFavoriteClick() {
+    const userId = getStoredUserId();
+    if (!userId || !movie || isFavorited || favoriteLoading) return;
+
+    setFavoriteLoading(true);
+    try {
+      const response = await fetch(`http://localhost:3000/api/users/${userId}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId: movie._id })
+      });
+      if (response.ok) {
+        setIsFavorited(true);
+      }
+    } catch (err) {
+      console.error('Failed to add favorite:', err);
+    } finally {
+      setFavoriteLoading(false);
+    }
   }
 
   return (
@@ -84,7 +132,17 @@ export default function MovieDetailsPage() {
               className={styles.poster} 
             />
             <div className={styles.infoBlock}>
-              <h3 className={styles.title}>{movie?.title || 'Untitled'}</h3>
+              <div className={styles.titleRow}>
+                <h3 className={styles.title}>{movie?.title || 'Untitled'}</h3>
+                <button 
+                  className={`${styles.favoriteButton} ${isFavorited ? styles.favoriteActive : ''}`}
+                  onClick={handleFavoriteClick}
+                  disabled={isFavorited || favoriteLoading}
+                  title={isFavorited ? 'Added to favorites' : 'Add to favorites'}
+                >
+                  {isFavorited ? '♥' : '♡'}
+                </button>
+              </div>
               <div className={styles.metaRow}>
                 <span className={styles.rating}>⭐ {movie?.rating ?? '—'}</span>
                 <span className={styles.genre}>{movie?.genre || 'Unknown'}</span>
