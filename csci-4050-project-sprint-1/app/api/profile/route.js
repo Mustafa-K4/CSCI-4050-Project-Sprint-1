@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser, toSafeUser } from '../../../lib/auth/current-user'
-import { sendProfileChangeEmail } from '../../../lib/auth/email'
+import { sendVerificationEmail } from '../../../lib/auth/email'
 
 export async function GET() {
   try {
@@ -46,7 +46,7 @@ export async function PATCH(request) {
     }
 
     await user.save()
-    await sendProfileChangeEmail({
+    await sendVerificationEmail({
       to: user.email,
       name: user.name,
       changedFields,
