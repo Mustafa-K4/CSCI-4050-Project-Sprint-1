@@ -16,6 +16,14 @@ function getUserId(user) {
   return user?.id || user?._id || user?.userId || ''
 }
 
+function createEmptyCard() {
+  return {
+    cardNumber: '',
+    expirationDate: '',
+    cvv: '',
+  }
+}
+
 function formatCardNumber(cardNumber) {
   const digits = String(cardNumber || '').replace(/\D/g, '')
 
@@ -34,6 +42,12 @@ function getFavoriteLabel(item, index) {
   return `Favorite ${index + 1}`
 }
 
+function getFavoriteSubtitle(item) {
+  if (!item || typeof item !== 'object') return 'Saved movie'
+
+  return item.genre || item.year || item.release_date || item.rating || 'Saved movie'
+}
+
 export default function ProfilePage() {
   const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -46,7 +60,7 @@ export default function ProfilePage() {
     address: '',
   })
   const [cards, setCards] = useState([])
-  const [favorites, setFavorites] = useState([])
+  const [favoriteMovies, setFavoriteMovies] = useState([])
 
   useEffect(() => {
     async function loadUser() {
@@ -98,7 +112,7 @@ export default function ProfilePage() {
             ? fetchedUser.paymentCards.slice(0, 3)
             : []
 
-        setCards(incomingCards)
+        setCards(incomingCards.length > 0 ? incomingCards : [createEmptyCard()])
 
         const favoriteItems = Array.isArray(fetchedUser.favoriteMovies)
           ? fetchedUser.favoriteMovies
@@ -106,7 +120,7 @@ export default function ProfilePage() {
             ? fetchedUser.favorites
             : []
 
-        setFavorites(favoriteItems)
+        setFavoriteMovies(favoriteItems)
       } catch (requestError) {
         setError(requestError.message || 'Failed to load profile.')
       } finally {
@@ -124,6 +138,42 @@ export default function ProfilePage() {
       ...prev,
       [field]: value,
     }))
+  }
+
+  function addPaymentCard() {
+    if (cards.length >= 3) {
+      setError('You can add a maximum of 3 payment cards.')
+      setSuccess('')
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    setCards(prev => [...prev, createEmptyCard()])
+  }
+
+  function updatePaymentCard(index, field, value) {
+    setError('')
+    setSuccess('')
+    setCards(prev =>
+      prev.map((card, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...card,
+              [field]: value,
+            }
+          : card,
+      ),
+    )
+  }
+
+  function removePaymentCard(index) {
+    setError('')
+    setSuccess('')
+    setCards(prev => {
+      const nextCards = prev.filter((_, currentIndex) => currentIndex !== index)
+      return nextCards.length > 0 ? nextCards : [createEmptyCard()]
+    })
   }
 
   async function handleSaveChanges() {
@@ -185,7 +235,7 @@ export default function ProfilePage() {
           ? updatedUser.payments.slice(0, 3)
           : cards
 
-      setCards(updatedCards)
+      setCards(updatedCards.length > 0 ? updatedCards : [createEmptyCard()])
       setSuccess('Profile updated successfully.')
     } catch (requestError) {
       setError(requestError.message || 'Failed to save profile changes.')
@@ -268,37 +318,90 @@ export default function ProfilePage() {
               <span className={styles.sectionMeta}>{cards.length}/3 shown</span>
             </div>
 
-            {cards.length === 0 ? (
-              <p className={styles.emptyText}>No payment cards on file.</p>
-            ) : (
-              <div className={styles.cardList}>
-                {cards.map((card, index) => (
-                  <article key={`card-${index}`} className={styles.cardItem}>
+            <div className={styles.cardList}>
+              {cards.map((card, index) => (
+                <article key={`card-${index}`} className={styles.cardItem}>
+                  <div className={styles.cardHeader}>
                     <p className={styles.cardTitle}>Card {index + 1}</p>
-                    <p className={styles.cardNumber}>{formatCardNumber(card?.cardNumber)}</p>
-                    <p className={styles.cardMeta}>Expires {card?.expirationDate || 'N/A'}</p>
-                  </article>
-                ))}
-              </div>
-            )}
+                    {cards.length > 1 && (
+                      <button
+                        type="button"
+                        className={styles.removeCardButton}
+                        onClick={() => removePaymentCard(index)}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  <label className={styles.field}>
+                    <span className={styles.label}>Card number</span>
+                    <input
+                      type="text"
+                      className={styles.input}
+                      value={card.cardNumber || ''}
+                      onChange={event => updatePaymentCard(index, 'cardNumber', event.target.value)}
+                      placeholder="1234 5678 9012 3456"
+                    />
+                  </label>
+
+                  <div className={styles.cardGrid}>
+                    <label className={styles.field}>
+                      <span className={styles.label}>Expiration date</span>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={card.expirationDate || ''}
+                        onChange={event => updatePaymentCard(index, 'expirationDate', event.target.value)}
+                        placeholder="MM/YY"
+                      />
+                    </label>
+
+                    <label className={styles.field}>
+                      <span className={styles.label}>CVV</span>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={card.cvv || ''}
+                        onChange={event => updatePaymentCard(index, 'cvv', event.target.value)}
+                        placeholder="123"
+                      />
+                    </label>
+                  </div>
+
+                  <p className={styles.cardPreview}>{formatCardNumber(card?.cardNumber)}</p>
+                  <p className={styles.cardMeta}>Expires {card?.expirationDate || 'N/A'}</p>
+                </article>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className={styles.addCardButton}
+              onClick={addPaymentCard}
+              disabled={cards.length >= 3}
+            >
+              Add Card
+            </button>
           </section>
 
           <section className={`${styles.section} ${styles.fullWidth}`}>
             <div className={styles.sectionHeading}>
-              <h2 className={styles.sectionTitle}>Favorites</h2>
-              <span className={styles.sectionMeta}>{favorites.length} total</span>
+              <h2 className={styles.sectionTitle}>Favorite Movies</h2>
+              <span className={styles.sectionMeta}>{favoriteMovies.length} total</span>
             </div>
 
-            {favorites.length === 0 ? (
-              <p className={styles.emptyText}>No favorites yet.</p>
+            {favoriteMovies.length === 0 ? (
+              <p className={styles.emptyText}>No favorite movies yet.</p>
             ) : (
-              <ul className={styles.favoriteList}>
-                {favorites.map((item, index) => (
-                  <li key={`favorite-${index}`} className={styles.favoriteItem}>
-                    {getFavoriteLabel(item, index)}
-                  </li>
+              <div className={styles.favoriteGrid}>
+                {favoriteMovies.map((item, index) => (
+                  <article key={`favorite-${index}`} className={styles.favoriteCard}>
+                    <p className={styles.favoriteTitle}>{getFavoriteLabel(item, index)}</p>
+                    <p className={styles.favoriteSubtitle}>{getFavoriteSubtitle(item)}</p>
+                  </article>
                 ))}
-              </ul>
+              </div>
             )}
           </section>
         </div>

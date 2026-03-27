@@ -61,10 +61,7 @@ export async function PUT(request, { params }) {
       return Response.json({ success: false, error: 'User not found' }, { status: 404 })
     }
 
-    if (
-      body.email !== undefined &&
-      String(body.email).trim().toLowerCase() !== String(existingUser.email).trim().toLowerCase()
-    ) {
+    if (body.email !== undefined) {
       return Response.json(
         { success: false, error: 'Email cannot be updated' },
         { status: 400 },
@@ -78,10 +75,8 @@ export async function PUT(request, { params }) {
         ? [body.address.trim()]
         : []
 
-    const paymentCardsInput = body.paymentCards !== undefined ? body.paymentCards : body.payments
+    const paymentCardsInput = body.paymentCards
     const paymentCards = normalizeCards(paymentCardsInput)
-    const favoriteMoviesInput = body.favoriteMovies !== undefined ? body.favoriteMovies : body.favorites
-    const favoriteMovies = normalizeFavoriteMovies(favoriteMoviesInput)
 
     if (!name) {
       return Response.json({ success: false, error: 'Name is required' }, { status: 400 })
@@ -112,7 +107,6 @@ export async function PUT(request, { params }) {
     existingUser.address = incomingAddress
     existingUser.payments = paymentCards
     existingUser.no_payments = String(paymentCards.length)
-    existingUser.favorites = favoriteMovies
 
     const updatedUser = await existingUser.save()
     const safeUser = updatedUser.toObject()
