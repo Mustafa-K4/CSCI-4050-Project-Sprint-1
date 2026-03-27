@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs'
 import dbConnect from '../../../../database/db'
 import User from '../../../../models/user'
 
@@ -68,6 +69,8 @@ export async function PUT(request, { params }) {
       )
     }
 
+    const currentPassword = typeof body.currentPassword === 'string' ? body.currentPassword : ''
+
     const name = typeof body.name === 'string' ? body.name.trim() : ''
     const incomingAddress = Array.isArray(body.address)
       ? body.address.map(item => String(item || '').trim()).filter(Boolean)
@@ -80,6 +83,22 @@ export async function PUT(request, { params }) {
 
     if (!name) {
       return Response.json({ success: false, error: 'Name is required' }, { status: 400 })
+    }
+
+    if (!currentPassword.trim()) {
+      return Response.json(
+        { success: false, error: 'Current password is required' },
+        { status: 400 },
+      )
+    }
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, existingUser.password)
+
+    if (!isPasswordValid) {
+      return Response.json(
+        { success: false, error: 'Current password is incorrect' },
+        { status: 401 },
+      )
     }
 
     if (incomingAddress.length > 1) {

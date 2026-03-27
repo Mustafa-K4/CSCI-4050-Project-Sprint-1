@@ -58,6 +58,7 @@ export default function ProfilePage() {
     name: '',
     email: '',
     address: '',
+    currentPassword: '',
   })
   const [cards, setCards] = useState([])
   const [favoriteMovies, setFavoriteMovies] = useState([])
@@ -104,6 +105,7 @@ export default function ProfilePage() {
           name: String(fetchedUser.name || ''),
           email: String(fetchedUser.email || ''),
           address: incomingAddress[0] || '',
+          currentPassword: '',
         })
 
         const incomingCards = Array.isArray(fetchedUser.payments)
@@ -190,6 +192,11 @@ export default function ProfilePage() {
       return
     }
 
+    if (!profile.currentPassword.trim()) {
+      setError('Please enter your current password before saving.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -201,6 +208,7 @@ export default function ProfilePage() {
         body: JSON.stringify({
           name: profile.name.trim(),
           address: profile.address.trim(),
+          currentPassword: profile.currentPassword,
           paymentCards: cards.map(card => ({
             cardNumber: String(card?.cardNumber || '').trim(),
             expirationDate: String(card?.expirationDate || '').trim(),
@@ -227,6 +235,7 @@ export default function ProfilePage() {
         ...prev,
         name: String(updatedUser.name || prev.name),
         address: updatedAddress[0] || '',
+        currentPassword: '',
       }))
 
       const updatedCards = Array.isArray(updatedUser.paymentCards)
@@ -324,6 +333,19 @@ export default function ProfilePage() {
                   value={profile.address}
                   onChange={event => updateProfileField('address', event.target.value)}
                   placeholder="123 Main St, City, State"
+                />
+              </label>
+
+              <label className={styles.field}>
+                <span className={styles.label}>
+                  Current password <span className={styles.required}>*</span>
+                </span>
+                <input
+                  type="password"
+                  className={styles.input}
+                  value={profile.currentPassword}
+                  onChange={event => updateProfileField('currentPassword', event.target.value)}
+                  placeholder="Enter your current password"
                 />
               </label>
             </form>
