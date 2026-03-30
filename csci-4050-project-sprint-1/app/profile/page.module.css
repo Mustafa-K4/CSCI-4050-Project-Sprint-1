@@ -3,16 +3,16 @@
   padding: 32px 16px;
   display: flex;
   justify-content: center;
-  background: #f6f3ee;
+  background: linear-gradient(180deg, #f8fafc, #eef2ff);
 }
 
 .panel {
   width: 100%;
   max-width: 1040px;
   background: #ffffff;
-  border: 1px solid #ebe4d9;
+  border: 1px solid #dbe3f3;
   border-radius: 20px;
-  box-shadow: 0 16px 40px rgba(46, 38, 24, 0.08);
+  box-shadow: 0 16px 40px rgba(16, 24, 40, 0.08);
   padding: 28px;
 }
 
@@ -24,9 +24,30 @@
   margin-bottom: 24px;
 }
 
+.headerActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.homeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #bcccdc;
+  background: #ffffff;
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
 .eyebrow {
   margin: 0 0 6px;
-  color: #7c6c55;
+  color: #52667a;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -35,18 +56,18 @@
 
 .title {
   margin: 0;
-  color: #2d5016;
+  color: #102a43;
   font-size: 2rem;
 }
 
 .subtitle {
   margin: 8px 0 0;
-  color: #645845;
+  color: #486581;
 }
 
 .helperText {
   margin: 10px 0 0;
-  color: #7c6c55;
+  color: #52667a;
   font-size: 0.92rem;
 }
 
@@ -54,14 +75,14 @@
   min-width: 180px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: #f5f0e8;
-  border: 1px solid #e5dccd;
+  background: #f8fafc;
+  border: 1px solid #dbe3f3;
 }
 
 .userBadgeLabel {
   display: block;
   margin-bottom: 4px;
-  color: #7c6c55;
+  color: #52667a;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -81,8 +102,8 @@
 }
 
 .section {
-  background: #fcfaf7;
-  border: 1px solid #ebe4d9;
+  background: #ffffff;
+  border: 1px solid #dbe3f3;
   border-radius: 16px;
   padding: 20px;
 }
@@ -101,12 +122,12 @@
 
 .sectionTitle {
   margin: 0;
-  color: #2d5016;
+  color: #102a43;
   font-size: 1.15rem;
 }
 
 .sectionMeta {
-  color: #7c6c55;
+  color: #52667a;
   font-size: 0.9rem;
 }
 
@@ -133,7 +154,7 @@
 
 .input {
   height: 42px;
-  border: 1px solid #d8d0c4;
+  border: 1px solid #bcccdc;
   border-radius: 10px;
   padding: 0 12px;
   font-size: 1rem;
@@ -142,12 +163,12 @@
 
 .input:focus {
   outline: none;
-  border-color: #2d5016;
-  box-shadow: 0 0 0 2px rgba(45, 80, 22, 0.14);
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
 }
 
 .input:disabled {
-  background: #f0ece5;
+  background: #f8fafc;
   color: #666;
 }
 
@@ -181,7 +202,7 @@
 
 .statusText {
   margin: 0;
-  color: #645845;
+  color: #486581;
   font-size: 1rem;
 }
 
@@ -194,7 +215,7 @@
 .saveButton {
   border: none;
   border-radius: 10px;
-  background: #2d5016;
+  background: #2563eb;
   color: #fff;
   padding: 12px 18px;
   font-size: 1rem;
@@ -215,7 +236,7 @@
 }
 
 .cardItem {
-  border: 1px solid #ece5db;
+  border: 1px solid #dbe3f3;
   border-radius: 14px;
   padding: 14px;
   background: #fff;
@@ -238,7 +259,7 @@
 
 .cardTitle {
   margin: 0 0 8px;
-  color: #2d5016;
+  color: #102a43;
   font-weight: 700;
 }
 
@@ -252,15 +273,15 @@
 
 .cardMeta {
   margin: 6px 0 0;
-  color: #7c6c55;
+  color: #52667a;
 }
 
 .addCardButton,
 .removeCardButton {
-  border: 1px solid #d8d0c4;
+  border: 1px solid #bcccdc;
   border-radius: 10px;
   background: #fff;
-  color: #2d5016;
+  color: #1d4ed8;
   padding: 10px 14px;
   font-size: 0.95rem;
   font-weight: 600;
@@ -283,7 +304,7 @@
 }
 
 .favoriteCard {
-  border: 1px solid #ece5db;
+  border: 1px solid #dbe3f3;
   border-radius: 14px;
   padding: 14px;
   background: #fff;
@@ -298,7 +319,7 @@
 
 .favoriteSubtitle {
   margin: 6px 0 0;
-  color: #7c6c55;
+  color: #52667a;
   font-size: 0.92rem;
 }
 
@@ -314,6 +335,11 @@
 
   .header {
     flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+    align-items: stretch;
   }
 
   .layout {

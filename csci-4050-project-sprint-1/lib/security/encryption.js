@@ -13,3 +13,36 @@ export function encryptPaymentData(value) {
   const authTag = cipher.getAuthTag()
   return `enc:v1:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`
 }
+
+export function isEncryptedPaymentData(value) {
+  return typeof value === 'string' && value.startsWith('enc:v1:')
+}
+
+export function decryptPaymentData(value) {
+  if (!isEncryptedPaymentData(value)) {
+    return value
+  }
+
+  const [, version, ivHex, authTagHex, encryptedHex] = value.split(':')
+  if (version !== 'v1' || !ivHex || !authTagHex || !encryptedHex) {
+    throw new Error('Invalid encrypted payment payload.')
+  }
+
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    getPaymentKey(),
+    Buffer.from(ivHex, 'hex'),
+  )
+  decipher.setAuthTag(Buffer.from(authTagHex, 'hex'))
+
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(encryptedHex, 'hex')),
+    decipher.final(),
+  ]).toString('utf8')
+
+  try {
+    return JSON.parse(decrypted)
+  } catch {
+    return decrypted
+  }
+}

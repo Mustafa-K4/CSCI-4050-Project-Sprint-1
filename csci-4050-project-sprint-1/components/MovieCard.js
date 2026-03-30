@@ -16,6 +16,12 @@ function getStoredUserId() {
   }
 }
 
+function getFavoriteMovieId(item) {
+  if (!item) return '';
+  if (typeof item === 'string') return item;
+  return String(item.movieId || item._id || item.id || '');
+}
+
 export default function MovieCard({ movie }) {
   const router = useRouter();
   const placeholder = 'https://via.placeholder.com/300x450?text=No+Poster';
@@ -42,7 +48,7 @@ export default function MovieCard({ movie }) {
         if (!response.ok || !data?.success) return;
 
         const favoriteMovies = Array.isArray(data?.user?.favoriteMovies)
-          ? data.user.favoriteMovies.map(item => String(item))
+          ? data.user.favoriteMovies.map(getFavoriteMovieId).filter(Boolean)
           : [];
 
         setIsFavorited(favoriteMovies.includes(String(movie._id)));
@@ -86,7 +92,7 @@ export default function MovieCard({ movie }) {
       if (!response.ok || !data?.success) return;
 
       const updatedFavorites = Array.isArray(data?.favoriteMovies)
-        ? data.favoriteMovies.map(item => String(item))
+        ? data.favoriteMovies.map(getFavoriteMovieId).filter(Boolean)
         : [];
 
       setIsFavorited(updatedFavorites.includes(String(movie._id)));

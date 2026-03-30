@@ -7,6 +7,16 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    firstName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    lastName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     username: {
       type: String,
       required: true,
@@ -41,6 +51,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: '0',
     },
+    status: {
+      type: String,
+      enum: ['Active', 'Inactive'],
+      default: 'Inactive',
+      trim: true,
+    },
     verification: {
       type: String,
       default: 'unverified',
@@ -57,6 +73,10 @@ const userSchema = new mongoose.Schema(
     favorites: {
       type: [mongoose.Schema.Types.Mixed],
       default: [],
+    },
+    promotionsOptIn: {
+      type: Boolean,
+      default: false,
     },
   },
   { collection: 'Users', timestamps: true }

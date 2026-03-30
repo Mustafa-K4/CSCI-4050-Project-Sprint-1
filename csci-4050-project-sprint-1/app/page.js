@@ -2,20 +2,48 @@
 
 import Link from 'next/link';
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import MovieCard from '../components/MovieCard';
 import SearchBar from '../components/SearchBar';
 import FilterBar from '../components/FilterBar';
 import styles from './HomePage.module.css';
 
 export default function HomePage() {
+  const router = useRouter();
 
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [query, setQuery] = useState('');
   const [genre, setGenre] = useState('All');
   const [externalSearchResults, setExternalSearchResults] = useState(null);
+
+  useEffect(() => {
+    async function loadCurrentUser() {
+      setAuthLoading(true);
+      try {
+        const response = await fetch('/api/profile');
+        if (!response.ok) {
+          setCurrentUser(null);
+          localStorage.removeItem('user');
+          return;
+        }
+
+        const user = await response.json();
+        setCurrentUser(user);
+        localStorage.setItem('user', JSON.stringify(user));
+      } catch {
+        setCurrentUser(null);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+
+    loadCurrentUser();
+  }, []);
 
   useEffect(() => {
     const ctl = new AbortController();
@@ -65,19 +93,39 @@ export default function HomePage() {
 
   const anyMovies = currentlyRunning.length > 0 || comingSoon.length > 0;
 
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      localStorage.removeItem('user');
+      setCurrentUser(null);
+      router.refresh();
+    }
+  }
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Cinema E-Booking System</h1>
 
         <div className={styles.authButtons}>
-          <Link href="/login" className={styles.loginButton}>
-            Login
-          </Link>
-
-          <Link href="/register" className={styles.loginButton}>
-            Register
-          </Link>
+          {authLoading ? null : currentUser ? (
+            <>
+              <span className={styles.userLabel}>
+                Signed in as {currentUser.name || currentUser.email}
+              </span>
+              <Link href="/profile" className={styles.secondaryButton}>
+                Profile
+              </Link>
+              <button type="button" className={styles.logoutButton} onClick={handleLogout}>
+                Log Out
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className={styles.loginButton}>
+              Login
+            </Link>
+          )}
         </div>
       </header>
 

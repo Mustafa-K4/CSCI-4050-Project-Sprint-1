@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import bcrypt from 'bcrypt'
 
 const KEY_LENGTH = 64
 
@@ -26,18 +27,23 @@ export function validatePasswordStrength(password) {
 }
 
 export function isHashedPassword(value) {
-  return typeof value === 'string' && value.startsWith('scrypt$')
+  return (
+    typeof value === 'string' &&
+    (value.startsWith('scrypt$') || value.startsWith('$2a$') || value.startsWith('$2b$') || value.startsWith('$2y$'))
+  )
 }
 
 export async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString('hex')
-  const derivedKey = await scrypt(password, salt)
-  return `scrypt$${salt}$${derivedKey.toString('hex')}`
+  return bcrypt.hash(password, 12)
 }
 
 export async function verifyPassword(password, storedValue) {
   if (!storedValue || typeof storedValue !== 'string') {
     return false
+  }
+
+  if (storedValue.startsWith('$2a$') || storedValue.startsWith('$2b$') || storedValue.startsWith('$2y$')) {
+    return bcrypt.compare(password, storedValue)
   }
 
   if (!isHashedPassword(storedValue)) {

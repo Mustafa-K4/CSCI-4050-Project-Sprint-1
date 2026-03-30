@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { NextResponse } from 'next/server'
 import dbConnect from '../../../../database/db'
 import User from '../../../../models/user'
+import { sendPasswordResetEmail } from '../../../../lib/auth/email'
 
 const RESET_TOKEN_TTL_MINUTES = 15
 
@@ -28,17 +29,35 @@ export async function POST(request) {
     const rawResetToken = crypto.randomBytes(32).toString('hex')
     const resetTokenHash = crypto.createHash('sha256').update(rawResetToken).digest('hex')
     const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000)
+    const baseUrl = new URL(request.url).origin
 
     user.resetTokenHash = resetTokenHash
     user.resetTokenExpiresAt = expiresAt
     await user.save()
+
+    try {
+      await sendPasswordResetEmail({
+        to: email,
+        token: rawResetToken,
+        baseUrl,
+      })
+    } catch (emailError) {
+      user.resetTokenHash = null
+      user.resetTokenExpiresAt = null
+      await user.save()
+
+      return NextResponse.json(
+        { error: emailError.message || 'Unable to send password reset email.' },
+        { status: 500 }
+      )
+    }
 
     if (process.env.NODE_ENV !== 'production') {
       return NextResponse.json(
         {
           ...genericMessage,
           resetToken: rawResetToken,
-          resetUrl: `/reset-password?token=${rawResetToken}`,
+          resetUrl: `${baseUrl}/reset-password?token=${rawResetToken}`,
           expiresAt,
         },
         { status: 200 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import dbConnect from '../../../../database/db'
 import User from '../../../../models/user'
+import { toSafeUser } from '../../../../lib/auth/current-user'
 import { hashPassword, isHashedPassword, verifyPassword } from '../../../../lib/auth/passwords'
 import {
   SESSION_COOKIE_NAME,
@@ -40,6 +41,18 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid username/email or password.' }, { status: 401 })
     }
 
+    const status =
+      user.status || (user.role === 'admin' || user.verification === 'verified' ? 'Active' : 'Inactive')
+    if (status !== 'Active') {
+      return NextResponse.json(
+        {
+          error: 'Account is not verified. Please check your email to verify your account.',
+          code: 'ACCOUNT_NOT_VERIFIED',
+        },
+        { status: 403 }
+      )
+    }
+
     if (!isHashedPassword(user.pswrd)) {
       user.pswrd = await hashPassword(password)
       await user.save()
@@ -56,13 +69,9 @@ export async function POST(request) {
       {
         message: 'Login successful.',
         role,
-        redirectTo: role === 'admin' ? '/admin' : '/customer',
-        user: {
-          id: user._id.toString(),
-          name: user.name || '',
-          email: user.email || '',
-          role,
-        },
+        status,
+        redirectTo: role === 'admin' ? '/admin' : '/',
+        user: toSafeUser(user),
       },
       { status: 200 }
     )

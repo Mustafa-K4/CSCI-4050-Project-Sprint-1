@@ -29,6 +29,12 @@ function getStoredUserId() {
   }
 }
 
+function getFavoriteMovieId(item) {
+  if (!item) return '';
+  if (typeof item === 'string') return item;
+  return String(item.movieId || item._id || item.id || '');
+}
+
 export default function MovieDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -51,7 +57,7 @@ export default function MovieDetailsPage() {
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:3000/api/movies/${id}`, { signal: ctl.signal })
+    fetch(`/api/movies/${id}`, { signal: ctl.signal })
       .then(res => {
         if (!res.ok) throw new Error(`Server error: ${res.status}`);
         return res.json();
@@ -77,11 +83,11 @@ export default function MovieDetailsPage() {
     const userId = getStoredUserId();
     if (!userId || !id) return;
 
-    fetch(`http://localhost:3000/api/users/${userId}`)
+    fetch(`/api/users/${userId}`)
       .then(res => res.json())
       .then(data => {
-        const favoriteMovies = data.favoriteMovies || data.favorites || [];
-        setIsFavorited(favoriteMovies.some(fav => fav === id || fav._id === id));
+        const favoriteMovies = data?.user?.favoriteMovies || data?.favoriteMovies || data?.favorites || [];
+        setIsFavorited(favoriteMovies.some(fav => getFavoriteMovieId(fav) === id));
       })
       .catch(err => console.error('Failed to load favorite status:', err));
   }, [id]);
@@ -98,7 +104,7 @@ export default function MovieDetailsPage() {
 
     setFavoriteLoading(true);
     try {
-      const response = await fetch(`http://localhost:3000/api/users/${userId}/favorite`, {
+      const response = await fetch(`/api/users/${userId}/favorite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ movieId: movie._id })
