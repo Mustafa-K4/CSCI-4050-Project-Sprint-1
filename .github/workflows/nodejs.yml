@@ -36,8 +36,12 @@ jobs:
         run: npm run build --if-present
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
 
       - name: Run tests
         run: npm test
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
