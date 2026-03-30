@@ -42,6 +42,7 @@
   box-shadow:0 8px 20px rgba(37,99,235,0.2);
 }
 
+.adminButton,
 .secondaryButton,
 .logoutButton{
   display:inline-flex;
@@ -51,6 +52,12 @@
   border-radius:999px;
   text-decoration:none;
   font-weight:600;
+}
+
+.adminButton{
+  border:1px solid #c7d2fe;
+  background:#eef2ff;
+  color:#1e3a8a;
 }
 
 .secondaryButton{

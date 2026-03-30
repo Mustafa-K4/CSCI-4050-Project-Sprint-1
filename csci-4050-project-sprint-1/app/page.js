@@ -114,6 +114,11 @@ export default function HomePage() {
               <span className={styles.userLabel}>
                 Signed in as {currentUser.name || currentUser.email}
               </span>
+              {currentUser.role === 'admin' ? (
+                <Link href="/admin" className={styles.adminButton}>
+                  Admin Portal
+                </Link>
+              ) : null}
               <Link href="/profile" className={styles.secondaryButton}>
                 Profile
               </Link>

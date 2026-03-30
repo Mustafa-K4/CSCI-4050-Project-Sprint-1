@@ -40,6 +40,15 @@
   color: #102a43;
 }
 
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1d4ed8;
+}
+
 .subtitle {
   margin: 0 0 18px;
   color: #334e68;
@@ -198,6 +207,31 @@
   flex-wrap: wrap;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.secondaryActionLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.secondaryActionLink:hover {
+  background: #dbeafe;
+}
+
 .logoutBtn {
   border: 1px solid #b91c1c;
   color: #b91c1c;
@@ -217,6 +251,91 @@
   margin-bottom: 8px;
 }
 
+.dashboardHero {
+  margin: 18px 0 22px;
+  padding: 18px;
+  border: 1px solid #dbe3f3;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 35%),
+    linear-gradient(135deg, #f8fbff, #eef4ff);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.heroNote {
+  margin: 0;
+  color: #486581;
+  font-size: 0.95rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adminGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.adminPanel {
+  border: 1px solid #dbe3f3;
+  border-radius: 14px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.05);
+}
+
+.adminPanelTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.adminPanelIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.adminPanelLabel {
+  color: #486581;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.adminPanelTitle {
+  margin: 14px 0 8px;
+  font-size: 1.05rem;
+  color: #102a43;
+}
+
+.adminPanelText {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.5;
+}
+
 .section {
   margin-top: 18px;
   border-top: 1px solid #e5e7eb;
@@ -225,4 +344,14 @@
 
 .inlineGap {
   margin-right: 10px;
+}
+
+@media (max-width: 640px) {
+  .adminGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboardHero {
+    padding: 16px;
+  }
 }
