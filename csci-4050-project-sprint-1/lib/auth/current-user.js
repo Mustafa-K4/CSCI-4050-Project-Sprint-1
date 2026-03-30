@@ -21,13 +21,19 @@ export function toSafeUser(user) {
   if (!user) {
     return null
   }
+  const status = user.status || (user.role === 'admin' || user.verification === 'verified' ? 'Active' : 'Inactive')
+
   return {
     id: user._id.toString(),
     name: user.name,
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
     username: user.username,
     email: user.email,
     role: user.role || 'customer',
+    status,
     address: Array.isArray(user.address) ? user.address : [],
     verification: user.verification,
+    promotionsOptIn: Boolean(user.promotionsOptIn),
   }
 }

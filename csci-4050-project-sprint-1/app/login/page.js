@@ -10,7 +10,7 @@ export default async function LoginPage() {
     redirect('/admin')
   }
   if (session?.role === 'customer') {
-    redirect('/customer')
+    redirect('/')
   }
 
   return (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getSessionUser, toSafeUser } from '../../../lib/auth/current-user'
-import { sendVerificationEmail } from '../../../lib/auth/email'
+import { sendProfileChangeEmail } from '../../../lib/auth/email'
 
 export async function GET() {
   try {
@@ -27,8 +27,12 @@ export async function PATCH(request) {
     const nextName = (body.name || '').toString().trim()
     const nextEmail = (body.email || '').toString().trim().toLowerCase()
 
-    if (!nextName || !nextEmail) {
-      return NextResponse.json({ error: 'Name and email are required.' }, { status: 400 })
+    if (!nextName) {
+      return NextResponse.json({ error: 'Name is required.' }, { status: 400 })
+    }
+
+    if (nextEmail && nextEmail !== user.email) {
+      return NextResponse.json({ error: 'Email address cannot be changed.' }, { status: 400 })
     }
 
     const changedFields = []
@@ -36,26 +40,28 @@ export async function PATCH(request) {
       user.name = nextName
       changedFields.push('name')
     }
-    if (user.email !== nextEmail) {
-      user.email = nextEmail
-      changedFields.push('email')
-    }
-
     if (changedFields.length === 0) {
       return NextResponse.json({ error: 'No profile fields were changed.' }, { status: 400 })
     }
 
     await user.save()
-    await sendVerificationEmail({
-      to: user.email,
-      name: user.name,
-      changedFields,
-    })
+
+    let emailWarning = ''
+    try {
+      await sendProfileChangeEmail({
+        to: user.email,
+        name: user.name,
+        changedFields,
+      })
+    } catch (emailError) {
+      emailWarning = emailError.message || 'Profile updated, but the email notification could not be sent.'
+    }
 
     return NextResponse.json(
       {
-        message: 'Profile updated successfully. Email notification sent.',
+        message: emailWarning || 'Profile updated successfully. Email notification sent.',
         user: toSafeUser(user),
+        emailWarning,
       },
       { status: 200 }
     )

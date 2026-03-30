@@ -45,7 +45,12 @@ function ResetPasswordContent() {
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <h1 className={styles.title}>Reset Password</h1>
+        <div className={styles.cardHeader}>
+          <h1 className={styles.title}>Reset Password</h1>
+          <Link href="/login" className={styles.closeButton} aria-label="Close reset password page">
+            ×
+          </Link>
+        </div>
         <p className={styles.subtitle}>Set a new password for your account.</p>
 
         {!token ? (
@@ -103,7 +108,12 @@ export default function ResetPasswordPage() {
       fallback={
         <main className={styles.page}>
           <section className={styles.card}>
-            <h1 className={styles.title}>Reset Password</h1>
+            <div className={styles.cardHeader}>
+              <h1 className={styles.title}>Reset Password</h1>
+              <Link href="/login" className={styles.closeButton} aria-label="Close reset password page">
+                ×
+              </Link>
+            </div>
             <p className={styles.subtitle}>Loading reset form...</p>
           </section>
         </main>

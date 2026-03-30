@@ -10,12 +10,15 @@ export default function LoginForm() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [errorCode, setErrorCode] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resendLoading, setResendLoading] = useState(false)
 
   async function onSubmit(event) {
     event.preventDefault()
     setError('')
+    setErrorCode('')
     setMessage('')
     setLoading(true)
 
@@ -29,6 +32,7 @@ export default function LoginForm() {
       const data = await response.json()
       if (!response.ok) {
         setError(data.error || 'Login failed.')
+        setErrorCode(data.code || '')
         return
       }
 
@@ -43,6 +47,33 @@ export default function LoginForm() {
       setError('Unable to connect. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleResendVerification() {
+    setError('')
+    setErrorCode('')
+    setMessage('')
+    setResendLoading(true)
+
+    try {
+      const response = await fetch('/api/auth/register/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        setError(data.error || 'Unable to resend verification email.')
+        return
+      }
+
+      setMessage(data.message || 'A new verification email has been sent.')
+    } catch {
+      setError('Unable to connect. Please try again.')
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -77,6 +108,17 @@ export default function LoginForm() {
       {error ? <p className={styles.error}>{error}</p> : null}
       {message ? <p className={styles.message}>{message}</p> : null}
 
+      {errorCode === 'ACCOUNT_NOT_VERIFIED' && identifier.trim() ? (
+        <button
+          type="button"
+          className={styles.secondaryButton}
+          onClick={handleResendVerification}
+          disabled={resendLoading}
+        >
+          {resendLoading ? 'Sending Verification Email...' : 'Resend Verification Email'}
+        </button>
+      ) : null}
+
       <button type="submit" className={styles.button} disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </button>
@@ -84,6 +126,13 @@ export default function LoginForm() {
       <p className={styles.linkRow}>
         <Link className={styles.textLink} href="/forgot-password">
           Forgot my password
+        </Link>
+      </p>
+
+      <p className={styles.linkRow}>
+        Don't have an account?{' '}
+        <Link className={styles.textLink} href="/register">
+          Sign up
         </Link>
       </p>
     </form>

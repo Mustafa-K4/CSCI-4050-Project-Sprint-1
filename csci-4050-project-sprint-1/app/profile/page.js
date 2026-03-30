@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import LogoutButton from '../../components/LogoutButton'
 import styles from './page.module.css'
 
 function getStoredUser() {
@@ -70,7 +72,17 @@ export default function ProfilePage() {
       setSuccess('')
 
       try {
-        const storedUser = getStoredUser()
+        let storedUser = getStoredUser()
+
+        if (!storedUser) {
+          const sessionResponse = await fetch('/api/profile')
+          const sessionData = await sessionResponse.json()
+
+          if (sessionResponse.ok && sessionData?.id) {
+            storedUser = sessionData
+            localStorage.setItem('user', JSON.stringify(sessionData))
+          }
+        }
 
         if (!storedUser) {
           setError('Please sign in to view your profile.')
@@ -275,12 +287,18 @@ export default function ProfilePage() {
               Fields marked <span className={styles.required}>*</span> are required.
             </p>
           </div>
-          {userId && (
-            <div className={styles.userBadge}>
-              <span className={styles.userBadgeLabel}>User ID</span>
-              <span className={styles.userBadgeValue}>{userId}</span>
-            </div>
-          )}
+          <div className={styles.headerActions}>
+            <Link href="/" className={styles.homeButton}>
+              Return Home
+            </Link>
+            <LogoutButton />
+            {userId && (
+              <div className={styles.userBadge}>
+                <span className={styles.userBadgeLabel}>User ID</span>
+                <span className={styles.userBadgeValue}>{userId}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {error && (

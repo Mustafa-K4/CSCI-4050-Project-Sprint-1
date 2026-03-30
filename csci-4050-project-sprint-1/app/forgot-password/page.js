@@ -8,14 +8,12 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
-  const [resetUrl, setResetUrl] = useState('')
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(event) {
     event.preventDefault()
     setError('')
     setMessage('')
-    setResetUrl('')
     setLoading(true)
 
     try {
@@ -30,9 +28,6 @@ export default function ForgotPasswordPage() {
         return
       }
       setMessage(data.message || 'Password reset request submitted.')
-      if (data.resetUrl) {
-        setResetUrl(data.resetUrl)
-      }
     } catch {
       setError('Network error. Please try again.')
     } finally {
@@ -43,7 +38,12 @@ export default function ForgotPasswordPage() {
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <h1 className={styles.title}>Forgot Password</h1>
+        <div className={styles.cardHeader}>
+          <h1 className={styles.title}>Forgot Password</h1>
+          <Link href="/login" className={styles.closeButton} aria-label="Close forgot password page">
+            ×
+          </Link>
+        </div>
         <p className={styles.subtitle}>Enter your email to request a password reset link.</p>
         <form onSubmit={onSubmit} className={styles.form}>
           <label className={styles.label}>
@@ -61,11 +61,6 @@ export default function ForgotPasswordPage() {
 
           {error ? <p className={styles.error}>{error}</p> : null}
           {message ? <p className={styles.message}>{message}</p> : null}
-          {resetUrl ? (
-            <p className={styles.message}>
-              Testing link: <Link href={resetUrl}>Open reset page</Link>
-            </p>
-          ) : null}
 
           <button type="submit" className={styles.button} disabled={loading}>
             {loading ? 'Requesting...' : 'Request Password Reset'}

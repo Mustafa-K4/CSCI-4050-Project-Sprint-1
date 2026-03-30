@@ -70,6 +70,21 @@
   font-size: 0.95rem;
 }
 
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #1f2937;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.checkboxInput {
+  width: 18px;
+  height: 18px;
+  accent-color: #2563eb;
+}
+
 .button {
   margin-top: 6px;
   border: none;
@@ -81,18 +96,65 @@
   font-weight: 600;
 }
 
+.secondaryButton {
+  margin-top: 6px;
+  border: 1px solid #bcccdc;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1d4ed8;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
 .button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
 }
 
+.secondaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.buttonRow {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.buttonLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .linkRow {
   margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #334e68;
 }
 
 .textLink {
   color: #1d4ed8;
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.textLink:hover {
+  color: #1e40af;
 }
 
 .closeButton {

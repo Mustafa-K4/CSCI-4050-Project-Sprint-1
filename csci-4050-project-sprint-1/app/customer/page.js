@@ -9,6 +9,9 @@ export default async function CustomerHomePage() {
   if (!session) {
     redirect('/login')
   }
+  if (session.role === 'admin') {
+    redirect('/admin')
+  }
 
   return (
     <main className={styles.page}>
