@@ -125,3 +125,54 @@ export async function sendPasswordResetEmail({ to, token, baseUrl }) {
     logPrefix: 'PasswordReset',
   })
 }
+
+export async function sendBookingConfirmationEmail({ to, bookingDetails, baseUrl }) {
+  const {
+    movieTitle,
+    showtime,
+    seats,
+    confirmationCode,
+    totalPrice,
+    customerName,
+  } = bookingDetails
+
+  const subject = `Booking Confirmation - ${confirmationCode}`
+  const seatsList = Array.isArray(seats) ? seats.join(', ') : seats || 'N/A'
+  
+  const plainMessage = `
+Hello ${customerName},
+
+Your movie ticket booking has been confirmed!
+
+Confirmation Code: ${confirmationCode}
+Movie: ${movieTitle}
+Showtime: ${showtime}
+Seats: ${seatsList}
+Total Price: $${totalPrice.toFixed(2)}
+
+Thank you for booking with Cinema E-Booking!
+  `.trim()
+
+  const htmlMessage = `
+    <h2>Booking Confirmed!</h2>
+    <p>Hello ${customerName},</p>
+    <p>Your movie ticket booking has been confirmed. Here are your details:</p>
+    <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+      <p><strong>Confirmation Code:</strong> ${confirmationCode}</p>
+      <p><strong>Movie:</strong> ${movieTitle}</p>
+      <p><strong>Showtime:</strong> ${showtime}</p>
+      <p><strong>Seats:</strong> ${seatsList}</p>
+      <p><strong>Total Price:</strong> $${totalPrice.toFixed(2)}</p>
+    </div>
+    <p>Please arrive at the theater 15 minutes before the showtime.</p>
+    <p>Thank you for booking with Cinema E-Booking!</p>
+  `
+
+  return sendEmail({
+    to,
+    subject,
+    plainMessage,
+    htmlMessage,
+    logPrefix: 'BookingConfirmation',
+  })
+}

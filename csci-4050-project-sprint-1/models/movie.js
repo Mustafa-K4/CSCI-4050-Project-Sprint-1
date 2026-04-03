@@ -24,6 +24,11 @@ const movieSchema = new mongoose.Schema({
     showtimes: {
         type: [String],
         required: false,
+        default: [],
+    },
+    showroom: {
+        type: String,
+        default: 'Room A',
     },
      description: {
         type: String,

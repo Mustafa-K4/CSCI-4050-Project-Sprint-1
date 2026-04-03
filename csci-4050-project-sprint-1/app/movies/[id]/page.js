@@ -6,8 +6,8 @@ import { useParams, useRouter } from 'next/navigation';
 import styles from './page.module.css';
 import { getYouTubeEmbedUrl } from '../../../utils/videoUtils';
 
-const SHOWTIMES = ['14:00', '17:00', '20:00'];
 const placeholder = 'https://via.placeholder.com/400x600?text=No+Poster';
+const DEFAULT_SHOWTIMES = ['14:00', '17:00', '20:00'];
 
 function formatTime(t) {
   if (!t) return '—';
@@ -173,7 +173,10 @@ export default function MovieDetailsPage() {
             <div className={styles.showtimes}>
               <h4>Showtimes</h4>
               <div className={styles.buttons}>
-                {SHOWTIMES.map(t => (
+                {(movie?.showtimes && movie.showtimes.length > 0 
+                  ? movie.showtimes 
+                  : DEFAULT_SHOWTIMES
+                ).map(t => (
                   <button 
                     key={t} 
                     className={styles.showBtn} 

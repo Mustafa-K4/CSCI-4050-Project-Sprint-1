@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import styles from './page.module.css'
 
 const PRICES = { adult: 12, child: 8, senior: 10 }
 const STEP_SELECT = 'select'
 const STEP_DETAILS = 'details'
 const STEP_CHECKOUT = 'checkout'
+const STEP_PAYMENT = 'payment'
 const STEP_CONFIRMED = 'confirmed'
 
 function formatTime(t) {
@@ -67,6 +68,7 @@ function createEmptyCard() {
 export default function BookingPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const id = params?.id
   const selectedTime = searchParams?.get('time') || ''
@@ -163,6 +165,22 @@ export default function BookingPage() {
       }
     }
 
+    // Check if we need to restore booking state after login
+    if (typeof window !== 'undefined') {
+      const savedState = sessionStorage.getItem('bookingState')
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState)
+          if (state.selectedSeats && Array.isArray(state.selectedSeats)) {
+            setSelectedSeats(new Set(state.selectedSeats))
+          }
+          sessionStorage.removeItem('bookingState')
+        } catch (e) {
+          console.error('Failed to restore booking state:', e)
+        }
+      }
+    }
+
     loadProfile()
 
     return () => {
@@ -236,6 +254,20 @@ export default function BookingPage() {
   }
 
   function handleContinueToCheckout() {
+    // Check if user is authenticated
+    const userId = getStoredUserId()
+    if (!userId) {
+      // Save current state to sessionStorage so we can restore after login
+      sessionStorage.setItem('bookingState', JSON.stringify({
+        movieId: id,
+        selectedTime,
+        selectedSeats: Array.from(selectedSeats),
+      }))
+      // Redirect to login with return URL
+      router.push(`/login?returnUrl=/booking/${id}?time=${encodeURIComponent(selectedTime)}`)
+      return
+    }
+
     setCheckoutError('')
     setStep(STEP_CHECKOUT)
   }
@@ -250,32 +282,55 @@ export default function BookingPage() {
 
     if (step === STEP_CHECKOUT) {
       setStep(STEP_DETAILS)
+      return
+    }
+
+    if (step === STEP_PAYMENT) {
+      setStep(STEP_CHECKOUT)
     }
   }
 
   function validateCheckout() {
-    if (!customerInfo.name.trim()) {
-      return 'Name is required for checkout.'
+    // Name validation
+    if (!customerInfo.name || !customerInfo.name.trim()) {
+      return '⚠️ Full Name is required'
+    }
+    if (customerInfo.name.trim().length < 2) {
+      return '⚠️ Full Name must be at least 2 characters'
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerInfo.email.trim())) {
-      return 'Enter a valid email address for checkout.'
+    // Email validation
+    if (!customerInfo.email || !customerInfo.email.trim()) {
+      return '⚠️ Email address is required'
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(customerInfo.email.trim())) {
+      return '⚠️ Please enter a valid email address'
     }
 
+    // Payment validation
     if (paymentChoice === 'new') {
-      if (!manualCard.cardholderName.trim()) {
-        return 'Cardholder name is required.'
+      if (!manualCard.cardholderName || !manualCard.cardholderName.trim()) {
+        return '⚠️ Cardholder Name is required'
       }
-
-      if (!manualCard.cardNumber.trim() || !manualCard.expirationDate.trim() || !manualCard.cvv.trim()) {
-        return 'Complete all payment card fields before checking out.'
+      if (!manualCard.cardNumber || !manualCard.cardNumber.trim()) {
+        return '⚠️ Card Number is required'
       }
-    }
-
-    if (paymentChoice.startsWith('saved-')) {
+      if (!manualCard.expirationDate || !manualCard.expirationDate.trim()) {
+        return '⚠️ Expiration Date is required'
+      }
+      if (!manualCard.cvv || !manualCard.cvv.trim()) {
+        return '⚠️ CVV is required'
+      }
+      // Basic card validation
+      const cardDigits = manualCard.cardNumber.replace(/\D/g, '')
+      if (cardDigits.length < 13 || cardDigits.length > 19) {
+        return '⚠️ Card Number must be between 13-19 digits'
+      }
+    } else if (paymentChoice.startsWith('saved-')) {
       const cardIndex = Number(paymentChoice.replace('saved-', ''))
-      if (!savedCards[cardIndex]) {
-        return 'Select a valid saved payment card.'
+      if (isNaN(cardIndex) || !savedCards[cardIndex]) {
+        return '⚠️ Please select a valid saved payment method'
       }
     }
 
@@ -290,8 +345,7 @@ export default function BookingPage() {
     }
 
     setCheckoutError('')
-    setConfirmationCode(`BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)
-    setStep(STEP_CONFIRMED)
+    setStep(STEP_PAYMENT)
   }
 
   return (
@@ -317,7 +371,8 @@ export default function BookingPage() {
               <span className={`${styles.stepPill} ${step === STEP_SELECT ? styles.stepActive : ''}`}>1. Seats</span>
               <span className={`${styles.stepPill} ${step === STEP_DETAILS ? styles.stepActive : ''}`}>2. Details</span>
               <span className={`${styles.stepPill} ${step === STEP_CHECKOUT ? styles.stepActive : ''}`}>3. Checkout</span>
-              <span className={`${styles.stepPill} ${step === STEP_CONFIRMED ? styles.stepActive : ''}`}>4. Confirmed</span>
+              <span className={`${styles.stepPill} ${step === STEP_PAYMENT ? styles.stepActive : ''}`}>4. Payment</span>
+              <span className={`${styles.stepPill} ${step === STEP_CONFIRMED ? styles.stepActive : ''}`}>5. Confirmed</span>
             </div>
 
             {checkoutError ? <p className={styles.error}>{checkoutError}</p> : null}
@@ -455,21 +510,27 @@ export default function BookingPage() {
 
                 <div className={styles.fieldGroup}>
                   <label className={styles.fieldLabel}>
-                    Name
+                    Full Name <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                     <input
                       className={styles.input}
                       type="text"
                       value={customerInfo.name}
                       onChange={(event) => updateCustomerInfo('name', event.target.value)}
+                      placeholder="John Doe"
+                      aria-label="Full Name (required)"
+                      required
                     />
                   </label>
                   <label className={styles.fieldLabel}>
-                    Email
+                    Email Address <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                     <input
                       className={styles.input}
                       type="email"
                       value={customerInfo.email}
                       onChange={(event) => updateCustomerInfo('email', event.target.value)}
+                      placeholder="john@example.com"
+                      aria-label="Email Address (required)"
+                      required
                     />
                   </label>
                   <label className={styles.fieldLabel}>
@@ -480,6 +541,7 @@ export default function BookingPage() {
                       value={customerInfo.address}
                       onChange={(event) => updateCustomerInfo('address', event.target.value)}
                       placeholder="Street, City, State"
+                      aria-label="Address (optional)"
                     />
                   </label>
                 </div>
@@ -527,43 +589,52 @@ export default function BookingPage() {
                   {paymentChoice === 'new' ? (
                     <div className={styles.fieldGroup}>
                       <label className={styles.fieldLabel}>
-                        Cardholder Name
+                        Cardholder Name <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                         <input
                           className={styles.input}
                           type="text"
                           value={manualCard.cardholderName}
                           onChange={(event) => updateManualCard('cardholderName', event.target.value)}
+                          placeholder="Name on Card"
+                          aria-label="Cardholder Name (required)"
+                          required
                         />
                       </label>
                       <label className={styles.fieldLabel}>
-                        Card Number
+                        Card Number <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                         <input
                           className={styles.input}
                           type="text"
                           value={manualCard.cardNumber}
                           onChange={(event) => updateManualCard('cardNumber', event.target.value)}
                           placeholder="1234 5678 9012 3456"
+                          aria-label="Card Number (required, 13-19 digits)"
+                          required
                         />
                       </label>
                       <div className={styles.inlineFields}>
                         <label className={styles.fieldLabel}>
-                          Expiration Date
+                          Expiration Date <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                           <input
                             className={styles.input}
                             type="text"
                             value={manualCard.expirationDate}
                             onChange={(event) => updateManualCard('expirationDate', event.target.value)}
                             placeholder="MM/YY"
+                            aria-label="Expiration Date in MM/YY format (required)"
+                            required
                           />
                         </label>
                         <label className={styles.fieldLabel}>
-                          CVV
+                          CVV <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
                           <input
                             className={styles.input}
                             type="text"
                             value={manualCard.cvv}
                             onChange={(event) => updateManualCard('cvv', event.target.value)}
                             placeholder="123"
+                            aria-label="CVV (3-4 digits, required)"
+                            required
                           />
                         </label>
                       </div>
@@ -597,6 +668,88 @@ export default function BookingPage() {
                   </button>
                   <button type="button" className={styles.confirmBtn} onClick={handleCompleteCheckout}>
                     Complete Checkout
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {step === STEP_PAYMENT ? (
+              <section className={styles.stepPanel}>
+                <h3 className={styles.sectionTitle}>Payment Processing</h3>
+                
+                <div className={styles.paymentMockup}>
+                  <div className={styles.paymentProcessor}>
+                    <div className={styles.processorHeader}>
+                      <h4>Secure Payment</h4>
+                      <span className={styles.secureIcon}>🔒</span>
+                    </div>
+
+                    <div className={styles.processingInfo}>
+                      <p className={styles.processingText}>Processing your payment securely...</p>
+                      <div className={styles.loadingSpinner}>
+                        <div className={styles.spinner}></div>
+                      </div>
+                    </div>
+
+                    <div className={styles.paymentDetails}>
+                      <h5>Payment Details</h5>
+                      <div className={styles.detailRow}>
+                        <span>Cardholder:</span>
+                        <span>{customerInfo.name}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span>Card Type:</span>
+                        <span>Visa •••• {manualCard.cardNumber.slice(-4) || (paymentChoice.startsWith('saved-') ? '****' : 'N/A')}</span>
+                      </div>
+                      <div className={styles.detailRow}>
+                        <span>Amount:</span>
+                        <span>${subtotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <div className={styles.securityNote}>
+                      <p>Your payment information is secure. This is a mockup demonstration of the payment processing page.</p>
+                    </div>
+                  </div>
+
+                  <section className={styles.summaryPanel}>
+                    <h4>Order Summary</h4>
+                    <div className={styles.summaryRow}>
+                      <span>Movie</span>
+                      <span>{movie?.title || 'Movie'}</span>
+                    </div>
+                    <div className={styles.summaryRow}>
+                      <span>Showtime</span>
+                      <span>{formatTime(selectedTime)}</span>
+                    </div>
+                    <div className={styles.summaryRow}>
+                      <span>Seats</span>
+                      <span>{selectedSeatLabels.join(', ')}</span>
+                    </div>
+                    <div className={styles.summaryRow}>
+                      <span>Total Amount</span>
+                      <span>${subtotal.toFixed(2)}</span>
+                    </div>
+                  </section>
+                </div>
+
+                <div className={styles.paymentNote}>
+                  <p><strong>Note:</strong> This is a mockup demonstration. In the final implementation, this page will integrate with a real payment processor (Stripe, PayPal, etc.). The payment processing and order confirmation will be completed in the final demo.</p>
+                </div>
+
+                <div className={styles.actionRow}>
+                  <button type="button" className={styles.secondaryBtn} onClick={handleBack}>
+                    Back to Checkout
+                  </button>
+                  <button 
+                    type="button" 
+                    className={styles.confirmBtn} 
+                    onClick={() => {
+                      setConfirmationCode(`BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)
+                      setStep(STEP_CONFIRMED)
+                    }}
+                  >
+                    Complete Payment (Demo)
                   </button>
                 </div>
               </section>
