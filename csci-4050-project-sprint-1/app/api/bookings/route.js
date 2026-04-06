@@ -1,7 +1,7 @@
 import dbConnect from '../../../database/db'
 import Booking from '../../../models/booking'
 import Movie from '../../../models/movie'
-import { v4 as uuidv4 } from 'uuid'
+//import { v4 as uuidv4 } from 'uuid'
 
 function generateConfirmationCode() {
   return `BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
