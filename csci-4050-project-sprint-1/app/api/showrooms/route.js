@@ -1,12 +1,14 @@
 import dbConnect from '../../../database/db';
 import Showroom from '../../../models/showroom';
+import { getSessionUser } from '../../../lib/auth/current-user';
+import { ensureDefaultShowrooms } from '../../../lib/admin/showrooms';
 
 export async function GET(request) {
   try {
-    const conn = await dbConnect();
+    await dbConnect();
     console.log('Database connected successfully');
 
-    const showrooms = await Showroom.find({});
+    const showrooms = await ensureDefaultShowrooms();
     console.log(`Found ${showrooms.length} showrooms in database`);
 
     return Response.json(showrooms, {
@@ -31,14 +33,26 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const conn = await dbConnect();
+    const sessionUser = await getSessionUser();
+    if (!sessionUser || sessionUser.role !== 'admin') {
+      return Response.json(
+        { error: 'Forbidden. Admin privileges are required to manage showrooms.' },
+        { status: 403 }
+      );
+    }
+
+    await dbConnect();
     console.log('Database connected successfully');
 
     const body = await request.json();
-    
-    // Validate required fields
+
+    const payload = {
+      cinema: String(body.cinema || '').trim(),
+      seatcount: Number(body.seatcount),
+    };
+
     const requiredFields = ['cinema', 'seatcount'];
-    const missingFields = requiredFields.filter(field => !body[field]);
+    const missingFields = requiredFields.filter(field => !payload[field]);
     
     if (missingFields.length > 0) {
       return Response.json(
@@ -47,9 +61,27 @@ export async function POST(request) {
       );
     }
 
+    if (!Number.isFinite(payload.seatcount) || payload.seatcount <= 0) {
+      return Response.json(
+        { error: 'Seat count must be a positive number.' },
+        { status: 400 }
+      );
+    }
+
+    const existingShowroom = await Showroom.findOne({
+      cinema: { $regex: `^${payload.cinema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+    });
+
+    if (existingShowroom) {
+      return Response.json(
+        { error: 'A showroom with that name already exists.' },
+        { status: 409 }
+      );
+    }
+
     const showroom = new Showroom({
-      cinema: body.cinema,
-      seatcount: body.seatcount,
+      cinema: payload.cinema,
+      seatcount: payload.seatcount,
     });
 
     const savedShowroom = await showroom.save();

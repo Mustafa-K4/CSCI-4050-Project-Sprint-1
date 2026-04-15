@@ -13,9 +13,18 @@ const movieSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+    age_rating: {
+        type: String,
+        required: false,
+    },
     genre: {
         type: String,
         required: false,
+    },
+    secondaryGenre: {
+        type: String,
+        required: false,
+        default: '',
     },
     status: {
         type: String,
