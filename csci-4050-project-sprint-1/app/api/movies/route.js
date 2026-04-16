@@ -2,7 +2,8 @@ import dbConnect from '../../../database/db';
 import Movie from '../../../models/movie';
 import { getSessionUser } from '../../../lib/auth/current-user';
 
-const ALLOWED_RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR'];
+const ALLOWED_USER_RATINGS = ['1/5', '2/5', '3/5', '4/5', '5/5'];
+const ALLOWED_AGE_RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR'];
 const ALLOWED_GENRES = [
   'Action',
   'Adventure',
@@ -22,7 +23,7 @@ export function buildMoviePayload(body) {
   return {
     title: String(body.title || '').trim(),
     rating: String(body.rating || '').trim(),
-    age_rating: String(body.age_rating || body.rating || '').trim(),
+    age_rating: String(body.age_rating || '').trim(),
     genre: String(body.genre || '').trim(),
     secondaryGenre: String(body.secondaryGenre || '').trim(),
     status: String(body.status || '').trim(),
@@ -34,7 +35,7 @@ export function buildMoviePayload(body) {
 }
 
 export function validateMoviePayload(payload) {
-  const requiredFields = ['title', 'rating', 'genre', 'status', 'description'];
+  const requiredFields = ['title', 'rating', 'age_rating', 'genre', 'status', 'description'];
   const missingFields = requiredFields.filter((field) => !payload[field]);
 
   if (missingFields.length > 0) {
@@ -46,8 +47,12 @@ export function validateMoviePayload(payload) {
     return 'Status must be either "Currently Running" or "Coming Soon".';
   }
 
-  if (!ALLOWED_RATINGS.includes(payload.rating)) {
-    return 'Rating must be one of the provided dropdown options.';
+  if (!ALLOWED_USER_RATINGS.includes(payload.rating)) {
+    return 'User rating must be one of the provided dropdown options.';
+  }
+
+  if (!ALLOWED_AGE_RATINGS.includes(payload.age_rating)) {
+    return 'Age rating must be one of the provided dropdown options.';
   }
 
   if (!ALLOWED_GENRES.includes(payload.genre)) {
