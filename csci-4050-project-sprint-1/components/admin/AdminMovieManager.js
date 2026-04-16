@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from './AdminPortal.module.css';
 
-const RATING_OPTIONS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR'];
+const USER_RATING_OPTIONS = ['1/5', '2/5', '3/5', '4/5', '5/5'];
+const AGE_RATING_OPTIONS = ['G', 'PG', 'PG-13', 'R', 'NC-17', 'NR'];
 const GENRE_OPTIONS = [
   'Action',
   'Adventure',
@@ -23,7 +24,8 @@ const SECONDARY_GENRE_OPTIONS = ['None', ...GENRE_OPTIONS];
 
 const INITIAL_FORM = {
   title: '',
-  rating: RATING_OPTIONS[0],
+  rating: USER_RATING_OPTIONS[3],
+  age_rating: AGE_RATING_OPTIONS[1],
   genre: GENRE_OPTIONS[0],
   secondaryGenre: 'None',
   status: 'Currently Running',
@@ -34,7 +36,8 @@ const INITIAL_FORM = {
 
 function validateMovieForm(form) {
   if (!form.title.trim()) return 'Movie title is required.';
-  if (!form.rating.trim()) return 'Movie rating is required.';
+  if (!form.rating.trim()) return 'User rating is required.';
+  if (!form.age_rating.trim()) return 'Age rating is required.';
   if (!form.genre.trim()) return 'Movie genre is required.';
   if (form.secondaryGenre !== 'None' && form.secondaryGenre === form.genre) {
     return 'Please choose two different genres.';
@@ -109,7 +112,8 @@ export default function AdminMovieManager() {
     setEditingMovieId(movie._id);
     setForm({
       title: movie.title || '',
-      rating: movie.rating || RATING_OPTIONS[0],
+      rating: movie.rating || USER_RATING_OPTIONS[3],
+      age_rating: movie.age_rating || AGE_RATING_OPTIONS[1],
       genre: movie.genre || GENRE_OPTIONS[0],
       secondaryGenre: movie.secondaryGenre || 'None',
       status: movie.status || STATUS_OPTIONS[0],
@@ -209,7 +213,7 @@ export default function AdminMovieManager() {
 
             <label className={styles.field}>
               <span className={styles.label}>
-                Rating<span className={styles.required}>*</span>
+                User Rating<span className={styles.required}>*</span>
               </span>
               <select
                 className={styles.select}
@@ -217,7 +221,7 @@ export default function AdminMovieManager() {
                 value={form.rating}
                 onChange={handleChange}
               >
-                {RATING_OPTIONS.map((rating) => (
+                {USER_RATING_OPTIONS.map((rating) => (
                   <option key={rating} value={rating}>
                     {rating}
                   </option>
@@ -227,6 +231,24 @@ export default function AdminMovieManager() {
           </div>
 
           <div className={styles.fieldGrid}>
+            <label className={styles.field}>
+              <span className={styles.label}>
+                Age Rating<span className={styles.required}>*</span>
+              </span>
+              <select
+                className={styles.select}
+                name="age_rating"
+                value={form.age_rating}
+                onChange={handleChange}
+              >
+                {AGE_RATING_OPTIONS.map((rating) => (
+                  <option key={rating} value={rating}>
+                    {rating}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <label className={styles.field}>
               <span className={styles.label}>
                 Primary Genre<span className={styles.required}>*</span>
@@ -370,7 +392,8 @@ export default function AdminMovieManager() {
                 <span className={styles.metaPill}>
                   {[movie.genre, movie.secondaryGenre].filter(Boolean).join(' / ') || 'Genre not set'}
                 </span>
-                <span className={styles.metaPill}>{movie.rating || 'Rating not set'}</span>
+                <span className={styles.metaPill}>User {movie.rating || '—'}</span>
+                <span className={styles.metaPill}>Age {movie.age_rating || '—'}</span>
               </div>
               <div className={styles.listActions}>
                 <button
