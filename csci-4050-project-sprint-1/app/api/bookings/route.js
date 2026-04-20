@@ -21,35 +21,40 @@ function validateBookingData(body) {
     errors.push('Movie ID is required')
   }
 
-  // Validate showtime
-  if (!body.showtime || typeof body.showtime !== 'string') {
-    errors.push('Showtime is required and must be valid')
-  }
+  // For initial bookings (just movieId, showingId, userId), skip other validations
+  if (body.showtime || body.seats || body.customerInfo) {
+    // This is a full booking validation
 
-  // Validate seats
-  if (!Array.isArray(body.seats) || body.seats.length === 0) {
-    errors.push('At least one seat must be selected')
-  }
-
-  // Validate customer info
-  if (!body.customerInfo) {
-    errors.push('Customer information is required')
-  } else {
-    const { name, email } = body.customerInfo
-    if (!name || name.trim().length < 2) {
-      errors.push('Customer name must be at least 2 characters')
+    // Validate showtime
+    if (!body.showtime || typeof body.showtime !== 'string') {
+      errors.push('Showtime is required and must be valid')
     }
-    if (!validateEmail(email)) {
-      errors.push('Valid email address is required')
-    }
-  }
 
-  // Validate ticket types if provided
-  if (body.ticketTypes) {
-    const { adult, child, senior } = body.ticketTypes
-    const total = (adult || 0) + (child || 0) + (senior || 0)
-    if (total !== body.seats.length) {
-      errors.push('Total tickets must match number of seats')
+    // Validate seats
+    if (!Array.isArray(body.seats) || body.seats.length === 0) {
+      errors.push('At least one seat must be selected')
+    }
+
+    // Validate customer info
+    if (!body.customerInfo) {
+      errors.push('Customer information is required')
+    } else {
+      const { name, email } = body.customerInfo
+      if (!name || name.trim().length < 2) {
+        errors.push('Customer name must be at least 2 characters')
+      }
+      if (!validateEmail(email)) {
+        errors.push('Valid email address is required')
+      }
+    }
+
+    // Validate ticket types if provided
+    if (body.ticketTypes) {
+      const { adult, child, senior } = body.ticketTypes
+      const total = (adult || 0) + (child || 0) + (senior || 0)
+      if (total !== body.seats.length) {
+        errors.push('Total tickets must match number of seats')
+      }
     }
   }
 
@@ -61,7 +66,22 @@ export async function POST(request) {
     const conn = await dbConnect()
     const body = await request.json()
 
-    // Validate all required fields
+    // Validate required fields
+    if (!body.movieId) {
+      return Response.json(
+        { error: 'Movie ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!body.userId) {
+      return Response.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate all other fields
     const validationErrors = validateBookingData(body)
     if (validationErrors.length > 0) {
       return Response.json(
@@ -73,6 +93,7 @@ export async function POST(request) {
     const {
       movieId,
       userId,
+      showingId,
       showtime,
       seats,
       numberOfTickets,
@@ -89,35 +110,41 @@ export async function POST(request) {
       )
     }
 
-    // Calculate total price (for now, using adult ticket price: $12)
-    const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
-    const ticketCount = ticketTypes?.adult || seats.length
-    const totalPrice = ticketCount * TICKET_PRICES.adult
+    // Check if this is an initial booking (just movieId, showingId, userId)
+    const isInitialBooking = !showtime && !seats && !customerInfo
 
-    // Create booking
-    const confirmationCode = generateConfirmationCode()
-    const booking = new Booking({
-      movieId,
-      userId: userId || null,
-      showtime,
-      seats,
-      numberOfTickets: seats.length,
-      ticketTypes: ticketTypes || { adult: seats.length, child: 0, senior: 0 },
-      totalPrice,
-      customerInfo: {
-        name: customerInfo.name.trim(),
-        email: customerInfo.email.toLowerCase().trim(),
-        address: (customerInfo.address || '').trim(),
-      },
-      status: 'pending',
-      confirmationCode,
-      paymentInfo: {
-        method: 'card',
+    let booking
+    if (isInitialBooking) {
+      // Create a pending booking with minimal info
+      const tempReference = `TEMP-${generateConfirmationCode()}`
+      booking = await Booking.create({
+        userID: userId,
+        bookingDate: new Date(),
+        bookingFee: 0,
+        paymentReference: tempReference,
         status: 'pending',
-      },
-    })
+        taxAmount: 0,
+        totalAmount: 0,
+        tickets: [],
+      })
+    } else {
+      // Create a full booking with all details
+      const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
+      const ticketCount = ticketTypes?.adult || seats.length
+      const totalPrice = ticketCount * TICKET_PRICES.adult
 
-    await booking.save()
+      const confirmationCode = generateConfirmationCode()
+      booking = await Booking.create({
+        userID: userId,
+        bookingDate: new Date(),
+        bookingFee: 0,
+        paymentReference: confirmationCode,
+        status: 'pending',
+        taxAmount: 0,
+        totalAmount: totalPrice,
+        tickets: [],
+      })
+    }
 
     return Response.json(
       {
@@ -129,7 +156,7 @@ export async function POST(request) {
           showtime: booking.showtime,
           seats: booking.seats,
           totalPrice: booking.totalPrice,
-          customerEmail: booking.customerInfo.email,
+          customerEmail: booking.customerInfo?.email,
           status: booking.status,
         },
       },

@@ -149,10 +149,10 @@
 
 .seat {
   min-height: 42px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #86efac;
   border-radius: 10px;
-  background: #f8fafc;
-  color: #52667a;
+  background: #dcfce7;
+  color: #166534;
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 700;
@@ -169,6 +169,19 @@
   border-color: #2563eb;
   color: #ffffff;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+.booked {
+  background: #9ca3af;
+  border-color: #6b7280;
+  color: #4b5563;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.booked:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .summaryPanel,
@@ -524,4 +537,110 @@
   color: #78350f;
   font-size: 0.85rem;
   line-height: 1.5;
+}
+
+/* Age Selection Modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modalTitle {
+  margin: 0 0 8px;
+  color: #102a43;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.modalSubtitle {
+  margin: 0 0 20px;
+  color: #52667a;
+  font-size: 0.95rem;
+}
+
+.ageOptions {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.ageButton {
+  flex: 1;
+  padding: 16px 20px;
+  border: 2px solid #dbe3f3;
+  border-radius: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+}
+
+.ageButton:hover {
+  border-color: #2563eb;
+  background: #f0f9ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+.ageButton:active {
+  transform: scale(0.98);
+}
+
+.ageLabel {
+  color: #102a43;
+  font-size: 1rem;
+}
+
+.agePrice {
+  color: #2563eb;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.cancelButton {
+  width: 100%;
+  padding: 12px 20px;
+  border: 1px solid #dbe3f3;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #52667a;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.cancelButton:hover {
+  background: #f8fafc;
+  border-color: #bbbdc6;
 }

@@ -10,6 +10,11 @@ const ticketSchema = new mongoose.Schema({
     required: true,
     ref: 'Booking',
   },
+  showing: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'Showing',
+  },
   price: {
     type: Number,
     required: true,

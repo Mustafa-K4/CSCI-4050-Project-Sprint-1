@@ -2,21 +2,22 @@ import mongoose from 'mongoose'
 
 const bookingSchema = new mongoose.Schema(
   {
+    userID: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: 'User',
+    },
     bookingDate: {
       type: Date,
       required: true,
     },
     bookingFee: {
-      type: String,
+      type: Number,
       required: true,
     },
     paymentReference: {
       type: String,
-      required: true,
-    },
-    status: {
-      type: String,
-      required: true,
+      required: false,
     },
     taxAmount: {
       type: Number,
@@ -26,6 +27,12 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    tickets: {
+        type: [mongoose.Schema.Types.ObjectId],
+        required: false,
+        default: [],
+        ref: 'Ticket',
+      },
   },
   { collection: 'Bookings', timestamps: true }
 )

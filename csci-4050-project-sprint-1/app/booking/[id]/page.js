@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import LoginModal from '../../../components/auth/LoginModal'
 import styles from './page.module.css'
 
 const PRICES = { adult: 12, child: 8, senior: 10 }
@@ -71,15 +72,21 @@ export default function BookingPage() {
   const router = useRouter()
 
   const id = params?.id
-  const selectedTime = searchParams?.get('time') || ''
+  const showingId = searchParams?.get('showingId') || ''
 
   const [movie, setMovie] = useState(null)
+  const [showing, setShowing] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [step, setStep] = useState(STEP_SELECT)
 
-  const [selectedSeats, setSelectedSeats] = useState(new Set())
+  const [selectedSeats, setSelectedSeats] = useState({}) // { "0-0": "adult", "0-1": "child", ... }
+  const [seatAgeModalOpen, setSeatAgeModalOpen] = useState(false)
+  const [pendingSeatKey, setPendingSeatKey] = useState(null)
+  const [bookingId, setBookingId] = useState(null)
+  const [bookingCreating, setBookingCreating] = useState(false)
   const [profileLoading, setProfileLoading] = useState(true)
+  const [bookedSeats, setBookedSeats] = useState(new Set()) // Seats already booked for this showing
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     email: '',
@@ -90,6 +97,7 @@ export default function BookingPage() {
   const [manualCard, setManualCard] = useState(createEmptyCard())
   const [checkoutError, setCheckoutError] = useState('')
   const [confirmationCode, setConfirmationCode] = useState('')
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
 
   useEffect(() => {
     if (!id) {
@@ -123,6 +131,94 @@ export default function BookingPage() {
 
     return () => ctl.abort()
   }, [id])
+
+  useEffect(() => {
+    if (!showingId) {
+      setShowing(null)
+      return
+    }
+
+    const ctl = new AbortController()
+    fetch(`/api/showings/${showingId}`, { signal: ctl.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`)
+        return res.json()
+      })
+      .then((data) => {
+        if (data && typeof data === 'object') {
+          setShowing(data)
+        }
+      })
+      .catch((requestError) => {
+        if (requestError.name !== 'AbortError') {
+          console.error('Failed to load showing:', requestError)
+        }
+      })
+
+    return () => ctl.abort()
+  }, [showingId])
+
+  useEffect(() => {
+    // Fetch existing booked seats for this showing
+    if (!showingId) {
+      setBookedSeats(new Set())
+      return
+    }
+
+    const ctl = new AbortController()
+    fetch(`/api/tickets?showing=${showingId}`, { signal: ctl.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`)
+        return res.json()
+      })
+      .then(tickets => {
+        if (Array.isArray(tickets)) {
+          const bookedSeatKeys = new Set(tickets.map(t => t.seat))
+          setBookedSeats(bookedSeatKeys)
+          console.log(`Found ${bookedSeatKeys.size} booked seats for showing ${showingId}`)
+        }
+      })
+      .catch(requestError => {
+        if (requestError.name !== 'AbortError') {
+          console.error('Failed to load booked seats:', requestError)
+        }
+      })
+
+    return () => ctl.abort()
+  }, [showingId])
+
+  useEffect(() => {
+    // Create booking on page load
+    async function createInitialBooking() {
+      if (!id || !showingId || bookingCreating) return
+      
+      const userId = getStoredUserId()
+      if (!userId) return
+
+      setBookingCreating(true)
+      try {
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            movieId: id,
+            showingId,
+            userId,
+          }),
+        })
+        const data = await response.json()
+        if (response.ok && data?.booking?._id) {
+          setBookingId(data.booking._id)
+        }
+      } catch (err) {
+        console.error('Failed to create initial booking:', err)
+      } finally {
+        setBookingCreating(false)
+      }
+    }
+
+    createInitialBooking()
+  }, [id, showingId])
 
   useEffect(() => {
     let cancelled = false
@@ -188,18 +284,27 @@ export default function BookingPage() {
     }
   }, [])
 
-  const adult = selectedSeats.size
-  const ticketCount = adult
-  const subtotal = adult * PRICES.adult
+  const adult = Object.values(selectedSeats).filter(t => t === 'adult').length
+  const child = Object.values(selectedSeats).filter(t => t === 'child').length
+  const senior = Object.values(selectedSeats).filter(t => t === 'senior').length
+  const ticketCount = adult + child + senior
+  const subtotal = (adult * PRICES.adult) + (child * PRICES.child) + (senior * PRICES.senior)
 
   const selectedSeatKeys = useMemo(
-    () => Array.from(selectedSeats).sort(sortSeatKeys),
+    () => Object.keys(selectedSeats).sort(sortSeatKeys),
     [selectedSeats],
   )
   const selectedSeatLabels = useMemo(
-    () => selectedSeatKeys.map(formatSeatLabel).filter(Boolean),
-    [selectedSeatKeys],
+    () => selectedSeatKeys.map(key => {
+      const label = formatSeatLabel(key)
+      const ageType = selectedSeats[key]
+      return label ? `${label} (${ageType})` : ''
+    }).filter(Boolean),
+    [selectedSeatKeys, selectedSeats],
   )
+
+  // Map seat keys to ticket IDs
+  const [seatToTicketId, setSeatToTicketId] = useState({}) // { "0-0": "ticketId123", ... }
 
   const seatsArray = useMemo(() => {
     const rows = 8
@@ -219,12 +324,115 @@ export default function BookingPage() {
     if (step !== STEP_SELECT) return
 
     const key = `${r}-${c}`
-    setSelectedSeats((prev) => {
-      const copy = new Set(prev)
-      if (copy.has(key)) copy.delete(key)
-      else copy.add(key)
-      return copy
+    
+    // Don't allow selection of already booked seats
+    if (bookedSeats.has(key) && !selectedSeats[key]) {
+      return
+    }
+
+    if (selectedSeats[key]) {
+      // Remove seat and its ticket
+      const ticketId = seatToTicketId[key]
+      const updatedSeats = { ...selectedSeats }
+      delete updatedSeats[key]
+      setSelectedSeats(updatedSeats)
+
+      // Remove ticket from booking
+      if (bookingId && ticketId) {
+        removeTicketFromBooking(ticketId)
+      }
+
+      // Clean up seat-ticket mapping
+      const newMapping = { ...seatToTicketId }
+      delete newMapping[key]
+      setSeatToTicketId(newMapping)
+    } else {
+      // Open age selection modal for new seat
+      setPendingSeatKey(key)
+      setSeatAgeModalOpen(true)
+    }
+  }
+
+  function handleSelectAgeForSeat(ageType) {
+    if (!pendingSeatKey || !bookingId) return
+
+    // Create ticket first
+    const ticketData = {
+      booking: bookingId,
+      showing: showingId,
+      seat: pendingSeatKey,
+      ticketType: ageType,
+      price: PRICES[ageType] || PRICES.adult,
+    }
+
+    fetch('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ticketData),
     })
+      .then(res => res.json())
+      .then(ticketResponse => {
+        if (ticketResponse?._id) {
+          const ticketId = ticketResponse._id
+
+          // Now add ticket to booking
+          return fetch(`/api/bookings/${bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ticketId,
+              action: 'add',
+            }),
+          }).then(res => res.json()).then(bookingResponse => {
+            if (bookingResponse.success) {
+              // Update local state
+              setSelectedSeats(prev => ({
+                ...prev,
+                [pendingSeatKey]: ageType,
+              }))
+              setSeatToTicketId(prev => ({
+                ...prev,
+                [pendingSeatKey]: ticketId,
+              }))
+              console.log(`Ticket ${ticketId} created and added to booking`)
+            } else {
+              console.error('Failed to add ticket to booking:', bookingResponse.error)
+            }
+          })
+        } else {
+          console.error('Failed to create ticket:', ticketResponse.error)
+        }
+      })
+      .catch(err => console.error('Error creating/adding ticket:', err))
+      .finally(() => {
+        setSeatAgeModalOpen(false)
+        setPendingSeatKey(null)
+      })
+  }
+
+  function removeTicketFromBooking(ticketId) {
+    fetch(`/api/bookings/${bookingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticketId,
+        action: 'remove',
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.success) {
+          console.error('Failed to remove ticket from booking:', data.error)
+        } else {
+          console.log(`Ticket ${ticketId} removed from booking`)
+        }
+      })
+      .catch(err => console.error('Error removing ticket:', err))
+  }
+
+  function updateBookingTickets(seatsToUpdate = selectedSeats) {
+    // This function is deprecated - now using single ticket operations
+    // Kept for reference, but individual seat operations handle it now
   }
 
   function updateCustomerInfo(field, value) {
@@ -244,7 +452,7 @@ export default function BookingPage() {
   }
 
   function handleContinueToDetails() {
-    if (selectedSeats.size === 0) {
+    if (ticketCount === 0) {
       setCheckoutError('Select at least one seat before continuing.')
       return
     }
@@ -257,14 +465,8 @@ export default function BookingPage() {
     // Check if user is authenticated
     const userId = getStoredUserId()
     if (!userId) {
-      // Save current state to sessionStorage so we can restore after login
-      sessionStorage.setItem('bookingState', JSON.stringify({
-        movieId: id,
-        selectedTime,
-        selectedSeats: Array.from(selectedSeats),
-      }))
-      // Redirect to login with return URL
-      router.push(`/login?returnUrl=/booking/${id}?time=${encodeURIComponent(selectedTime)}`)
+      // Open login modal instead of redirecting
+      setLoginModalOpen(true)
       return
     }
 
@@ -288,6 +490,53 @@ export default function BookingPage() {
     if (step === STEP_PAYMENT) {
       setStep(STEP_CHECKOUT)
     }
+  }
+
+  function handleLoginSuccess() {
+    // Close modal
+    setLoginModalOpen(false)
+    // Reload profile data with new user
+    setProfileLoading(true)
+    
+    // Small delay to ensure user is stored in localStorage
+    setTimeout(async () => {
+      const userId = getStoredUserId()
+      if (!userId) {
+        setProfileLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/users/${userId}`)
+        const data = await response.json()
+
+        if (response.ok && data?.success && data?.user) {
+          const fetchedUser = data.user
+          const cards = Array.isArray(fetchedUser.paymentCards)
+            ? fetchedUser.paymentCards.slice(0, 3)
+            : Array.isArray(fetchedUser.payments)
+              ? fetchedUser.payments.slice(0, 3)
+              : []
+
+          setCustomerInfo({
+            name: String(fetchedUser.name || ''),
+            email: String(fetchedUser.email || ''),
+            address: Array.isArray(fetchedUser.address)
+              ? String(fetchedUser.address[0] || '')
+              : String(fetchedUser.address || ''),
+          })
+          setSavedCards(cards)
+          setPaymentChoice(cards.length > 0 ? 'saved-0' : 'new')
+          
+          // Move to checkout step
+          setStep(STEP_CHECKOUT)
+        }
+      } catch (error) {
+        console.error('Failed to reload profile:', error)
+      } finally {
+        setProfileLoading(false)
+      }
+    }, 300)
   }
 
   function validateCheckout() {
@@ -364,7 +613,7 @@ export default function BookingPage() {
         <div className={styles.grid}>
           <div className={styles.left}>
             <p className={styles.meta}>
-              {movie?.title || 'Movie'} • {formatTime(selectedTime)}
+              {movie?.title || 'Movie'} • {showing?.time ? formatTime(showing.time) : '—'}
             </p>
 
             <div className={styles.stepRow}>
@@ -388,15 +637,15 @@ export default function BookingPage() {
                     </label>
                     <label>
                       Child ($8)
-                      <input type="number" min={0} value={0} readOnly />
+                      <input type="number" min={0} value={child} readOnly />
                     </label>
                     <label>
                       Senior ($10)
-                      <input type="number" min={0} value={0} readOnly />
+                      <input type="number" min={0} value={senior} readOnly />
                     </label>
                   </div>
                   <p className={styles.ticketHelp}>
-                    Each selected seat is automatically added as 1 adult ticket.
+                    Click a seat, then choose the ticket type (Adult, Child, Senior) for that seat.
                   </p>
                 </section>
 
@@ -408,19 +657,22 @@ export default function BookingPage() {
                       <div key={rowIndex} className={styles.seatRow}>
                         {row.map(({ r, c }) => {
                           const key = `${r}-${c}`
-                          const isSelected = selectedSeats.has(key)
+                          const ageType = selectedSeats[key]
+                          const isSelected = !!ageType
+                          const isBooked = bookedSeats.has(key)
 
                           return (
                             <button
                               key={key}
                               type="button"
-                              className={`${styles.seat} ${isSelected ? styles.selected : ''}`}
+                              className={`${styles.seat} ${isSelected ? styles.selected : ''} ${isBooked && !isSelected ? styles.booked : ''}`}
                               onClick={() => toggleSeat(r, c)}
+                              disabled={isBooked && !isSelected}
                               aria-pressed={isSelected}
-                              aria-label={`Seat ${formatSeatLabel(key)}`}
+                              aria-label={`Seat ${formatSeatLabel(key)}${isSelected ? ` (${ageType})` : ''}${isBooked && !isSelected ? ' (booked)' : ''}`}
                               title={formatSeatLabel(key)}
                             >
-                              {formatSeatLabel(key)}
+                              {isSelected ? `${formatSeatLabel(key)} (${ageType[0].toUpperCase()})` : formatSeatLabel(key)}
                             </button>
                           )
                         })}
@@ -432,16 +684,24 @@ export default function BookingPage() {
                 <section className={styles.summaryPanel}>
                   <h4>Order Summary</h4>
                   <div className={styles.summaryRow}>
-                    <span>Adult Tickets</span>
-                    <span>{adult}</span>
+                    <span>Adult Tickets ({adult})</span>
+                    <span>${(adult * PRICES.adult).toFixed(2)}</span>
                   </div>
+                  {child > 0 && (
+                    <div className={styles.summaryRow}>
+                      <span>Child Tickets ({child})</span>
+                      <span>${(child * PRICES.child).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {senior > 0 && (
+                    <div className={styles.summaryRow}>
+                      <span>Senior Tickets ({senior})</span>
+                      <span>${(senior * PRICES.senior).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className={styles.summaryRow}>
                     <span>Selected Seats</span>
                     <span>{selectedSeatLabels.length > 0 ? selectedSeatLabels.join(', ') : 'None'}</span>
-                  </div>
-                  <div className={styles.summaryRow}>
-                    <span>Price Per Ticket</span>
-                    <span>${PRICES.adult.toFixed(2)}</span>
                   </div>
                   <div className={`${styles.summaryRow} ${styles.totalRow}`}>
                     <span>Total</span>
@@ -469,7 +729,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.detailCard}>
                     <span className={styles.detailLabel}>Showtime</span>
-                    <span className={styles.detailValue}>{formatTime(selectedTime)}</span>
+                    <span className={styles.detailValue}>{showing?.time ? formatTime(showing.time) : '—'}</span>
                   </div>
                   <div className={styles.detailCard}>
                     <span className={styles.detailLabel}>Seats</span>
@@ -650,7 +910,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Showtime</span>
-                    <span>{formatTime(selectedTime)}</span>
+                    <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Seats</span>
@@ -720,7 +980,7 @@ export default function BookingPage() {
                     </div>
                     <div className={styles.summaryRow}>
                       <span>Showtime</span>
-                      <span>{formatTime(selectedTime)}</span>
+                      <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
                     </div>
                     <div className={styles.summaryRow}>
                       <span>Seats</span>
@@ -771,7 +1031,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Showtime</span>
-                    <span>{formatTime(selectedTime)}</span>
+                    <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Seats</span>
@@ -802,6 +1062,62 @@ export default function BookingPage() {
       ) : !loading && !error ? (
         <p className={styles.noMovie}>No movie found.</p>
       ) : null}
+
+      {/* Age Selection Modal */}
+      {seatAgeModalOpen && (
+        <div className={styles.modal} onClick={() => setSeatAgeModalOpen(false)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 className={styles.modalTitle}>Select Ticket Type</h3>
+            <p className={styles.modalSubtitle}>for {formatSeatLabel(pendingSeatKey)}</p>
+            <div className={styles.ageOptions}>
+              <button
+                className={styles.ageButton}
+                onClick={() => handleSelectAgeForSeat('adult')}
+              >
+                <span className={styles.ageLabel}>Adult</span>
+                <span className={styles.agePrice}>${PRICES.adult}</span>
+              </button>
+              <button
+                className={styles.ageButton}
+                onClick={() => handleSelectAgeForSeat('child')}
+              >
+                <span className={styles.ageLabel}>Child</span>
+                <span className={styles.agePrice}>${PRICES.child}</span>
+              </button>
+              <button
+                className={styles.ageButton}
+                onClick={() => handleSelectAgeForSeat('senior')}
+              >
+                <span className={styles.ageLabel}>Senior</span>
+                <span className={styles.agePrice}>${PRICES.senior}</span>
+              </button>
+            </div>
+            <button
+              className={styles.cancelButton}
+              onClick={() => {
+                setSeatAgeModalOpen(false)
+                setPendingSeatKey(null)
+                // Remove the pending seat if it was added
+                setSelectedSeats((prev) => {
+                  const copy = { ...prev }
+                  if (copy[pendingSeatKey]) {
+                    delete copy[pendingSeatKey]
+                  }
+                  return copy
+                })
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <LoginModal 
+        isOpen={loginModalOpen} 
+        onClose={() => setLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   )
 }

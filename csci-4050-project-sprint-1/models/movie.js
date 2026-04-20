@@ -31,7 +31,8 @@ const movieSchema = new mongoose.Schema({
         required: false,
     },
     showtimes: {
-        type: [String],
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Showing',
         required: false,
         default: [],
     },
