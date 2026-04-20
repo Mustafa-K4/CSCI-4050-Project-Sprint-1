@@ -7,7 +7,7 @@ import styles from './page.module.css';
 import { getYouTubeEmbedUrl } from '../../../utils/videoUtils';
 
 const placeholder = 'https://via.placeholder.com/400x600?text=No+Poster';
-const DEFAULT_SHOWTIMES = ['14:00', '17:00', '20:00'];
+const DEFAULT_SHOWTIMES = [];
 
 function formatTime(t) {
   if (!t) return '—';
@@ -45,6 +45,7 @@ export default function MovieDetailsPage() {
   const [error, setError] = useState(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [showtimes, setShowtimes] = useState([]);
 
   useEffect(() => {
     if (!id) {
@@ -92,9 +93,31 @@ export default function MovieDetailsPage() {
       .catch(err => console.error('Failed to load favorite status:', err));
   }, [id]);
 
-  function handleShowtime(time) {
-    if (!id || !time) return;
-    const params = new URLSearchParams({ time });
+  useEffect(() => {
+    if (!movie || !movie.showtimes || movie.showtimes.length === 0) {
+      setShowtimes([]);
+      return;
+    }
+
+    const fetchShowings = async () => {
+      try {
+        const showingPromises = movie.showtimes.map(showingId =>
+          fetch(`/api/showings/${showingId}`).then(res => res.json())
+        );
+        const showingData = await Promise.all(showingPromises);
+        setShowtimes(showingData.filter(s => s && s._id && s.time));
+      } catch (err) {
+        console.error('Failed to load showtimes:', err);
+        setShowtimes([]);
+      }
+    };
+
+    fetchShowings();
+  }, [movie]);
+
+  function handleShowtime(showingId) {
+    if (!id || !showingId) return;
+    const params = new URLSearchParams({ showingId });
     router.push(`/booking/${id}?${params.toString()}`);
   }
 
@@ -173,16 +196,16 @@ export default function MovieDetailsPage() {
             <div className={styles.showtimes}>
               <h4>Showtimes</h4>
               <div className={styles.buttons}>
-                {(movie?.showtimes && movie.showtimes.length > 0 
-                  ? movie.showtimes 
+                {(showtimes && showtimes.length > 0 
+                  ? showtimes 
                   : DEFAULT_SHOWTIMES
-                ).map(t => (
+                ).map(showing => (
                   <button 
-                    key={t} 
+                    key={showing._id} 
                     className={styles.showBtn} 
-                    onClick={() => handleShowtime(t)}
+                    onClick={() => handleShowtime(showing._id)}
                   >
-                    {formatTime(t)}
+                    {formatTime(showing.time)}
                   </button>
                 ))}
               </div>
