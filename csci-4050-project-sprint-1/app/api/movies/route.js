@@ -80,16 +80,10 @@ export function validateMoviePayload(payload) {
 
 export async function GET(request) {
   try {
-    // Connect to MongoDB
     await dbConnect();
-    console.log('Database connected successfully');
 
-    // Fetch all movies from the collection
     const movies = await Movie.find({}).sort({ createdAt: -1, title: 1 });
-    console.log(`Found ${movies.length} movies in database`);
-    //console.log('Movies:', movies);
 
-    // Return the movies as JSON
     return Response.json(movies, {
       status: 200,
       headers: {

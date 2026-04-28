@@ -7,7 +7,16 @@ import styles from './page.module.css';
 import { getYouTubeEmbedUrl } from '../../../utils/videoUtils';
 
 const placeholder = 'https://via.placeholder.com/400x600?text=No+Poster';
-const DEFAULT_SHOWTIMES = [];
+
+function formatDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
 
 function formatTime(t) {
   if (!t) return '—';
@@ -46,6 +55,7 @@ export default function MovieDetailsPage() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [showtimes, setShowtimes] = useState([]);
+  const genreText = [movie?.genre, movie?.secondaryGenre].filter(Boolean).join(' / ');
 
   useEffect(() => {
     if (!id) {
@@ -90,30 +100,32 @@ export default function MovieDetailsPage() {
         const favoriteMovies = data?.user?.favoriteMovies || data?.favoriteMovies || data?.favorites || [];
         setIsFavorited(favoriteMovies.some(fav => getFavoriteMovieId(fav) === id));
       })
-      .catch(err => console.error('Failed to load favorite status:', err));
+      .catch(() => setIsFavorited(false));
   }, [id]);
 
   useEffect(() => {
-    if (!movie || !movie.showtimes || movie.showtimes.length === 0) {
+    if (!id) {
       setShowtimes([]);
       return;
     }
 
-    const fetchShowings = async () => {
-      try {
-        const showingPromises = movie.showtimes.map(showingId =>
-          fetch(`/api/showings/${showingId}`).then(res => res.json())
-        );
-        const showingData = await Promise.all(showingPromises);
-        setShowtimes(showingData.filter(s => s && s._id && s.time));
-      } catch (err) {
-        console.error('Failed to load showtimes:', err);
-        setShowtimes([]);
-      }
-    };
+    const ctl = new AbortController();
+    fetch(`/api/showings?movieId=${id}`, { signal: ctl.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Server error: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        setShowtimes(Array.isArray(data) ? data.filter(s => s && s._id && s.time) : []);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          setShowtimes([]);
+        }
+      });
 
-    fetchShowings();
-  }, [movie]);
+    return () => ctl.abort();
+  }, [id]);
 
   function handleShowtime(showingId) {
     if (!id || !showingId) return;
@@ -136,7 +148,7 @@ export default function MovieDetailsPage() {
         setIsFavorited(true);
       }
     } catch (err) {
-      console.error('Failed to add favorite:', err);
+      setIsFavorited(false);
     } finally {
       setFavoriteLoading(false);
     }
@@ -145,7 +157,7 @@ export default function MovieDetailsPage() {
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
-        <Link href="/" className={styles.backLink}>← Back</Link>
+        <Link href="/" className={styles.backLink}>Back to Movies</Link>
         <h2 className={styles.pageTitle}>Movie Details</h2>
       </div>
 
@@ -168,13 +180,15 @@ export default function MovieDetailsPage() {
                   onClick={handleFavoriteClick}
                   disabled={isFavorited || favoriteLoading}
                   title={isFavorited ? 'Added to favorites' : 'Add to favorites'}
+                  aria-label={isFavorited ? 'Added to favorites' : 'Add to favorites'}
                 >
                   {isFavorited ? '♥' : '♡'}
                 </button>
               </div>
               <div className={styles.metaRow}>
-                <span className={styles.rating}>⭐ {movie?.rating ?? '—'}</span>
-                <span className={styles.genre}>{movie?.genre || 'Unknown'}</span>
+                <span className={styles.metaPill}>Age {movie?.age_rating || 'NR'}</span>
+                <span className={styles.metaPill}>User {movie?.rating || '—'}</span>
+                <span className={styles.metaPill}>{genreText || 'Genre not set'}</span>
               </div>
               <p className={styles.description}>{movie?.description || 'No description available'}</p>
             </div>
@@ -196,18 +210,21 @@ export default function MovieDetailsPage() {
             <div className={styles.showtimes}>
               <h4>Showtimes</h4>
               <div className={styles.buttons}>
-                {(showtimes && showtimes.length > 0 
-                  ? showtimes 
-                  : DEFAULT_SHOWTIMES
-                ).map(showing => (
-                  <button 
-                    key={showing._id} 
-                    className={styles.showBtn} 
-                    onClick={() => handleShowtime(showing._id)}
-                  >
-                    {formatTime(showing.time)}
-                  </button>
-                ))}
+                {showtimes.length > 0 ? (
+                  showtimes.map(showing => (
+                    <button
+                      key={showing._id}
+                      className={styles.showBtn}
+                      onClick={() => handleShowtime(showing._id)}
+                      title={showing?.showroomID?.cinema || 'Showtime'}
+                    >
+                      <span>{[formatDate(showing.date), formatTime(showing.time)].filter(Boolean).join(' • ')}</span>
+                      <small>{showing?.showroomID?.cinema || 'Showroom'}</small>
+                    </button>
+                  ))
+                ) : (
+                  <p className={styles.emptyShowtimes}>No showtimes are available for this movie yet.</p>
+                )}
               </div>
             </div>
           </div>

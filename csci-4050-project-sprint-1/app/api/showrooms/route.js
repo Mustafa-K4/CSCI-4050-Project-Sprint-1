@@ -6,10 +6,8 @@ import { ensureDefaultShowrooms } from '../../../lib/admin/showrooms';
 export async function GET(request) {
   try {
     await dbConnect();
-    console.log('Database connected successfully');
 
     const showrooms = await ensureDefaultShowrooms();
-    console.log(`Found ${showrooms.length} showrooms in database`);
 
     return Response.json(showrooms, {
       status: 200,
@@ -42,7 +40,6 @@ export async function POST(request) {
     }
 
     await dbConnect();
-    console.log('Database connected successfully');
 
     const body = await request.json();
 
@@ -85,7 +82,6 @@ export async function POST(request) {
     });
 
     const savedShowroom = await showroom.save();
-    console.log('Showroom created successfully:', savedShowroom._id);
 
     return Response.json(savedShowroom, {
       status: 201,

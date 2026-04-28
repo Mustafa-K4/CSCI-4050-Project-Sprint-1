@@ -1,14 +1,33 @@
 import mongoose from 'mongoose'
 import dbConnect from '../../../database/db'
+import Booking from '../../../models/booking'
 import Ticket from '../../../models/ticket'
+
+void Booking
 
 export async function GET(request) {
   try {
     await dbConnect()
 
-    const tickets = await Ticket.find({}).populate('booking')
+    const { searchParams } = new URL(request.url)
+    const showingId = searchParams.get('showing')
+    const query = {}
 
-    return Response.json(tickets, {
+    if (showingId) {
+      if (!mongoose.Types.ObjectId.isValid(showingId)) {
+        return Response.json(
+          { error: 'Invalid showing ID format' },
+          { status: 400 }
+        )
+      }
+
+      query.showing = showingId
+    }
+
+    const tickets = await Ticket.find(query).populate('booking')
+    const visibleTickets = tickets.filter((ticket) => ticket.booking?.status === 'confirmed')
+
+    return Response.json(visibleTickets, {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -61,8 +80,6 @@ export async function POST(request) {
       showing: body.showing,
 
     })
-
-    console.log('Ticket created successfully:', ticket._id)
 
     return Response.json(ticket, {
       status: 201,

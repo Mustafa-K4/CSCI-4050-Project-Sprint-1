@@ -16,14 +16,11 @@ export async function GET(request) {
       );
     }
 
-    const conn = await dbConnect();
-    console.log('Database connected successfully');
+    await dbConnect();
 
     const movies = await Movie.find({
       title: { $regex: title.trim(), $options: 'i' }
     });
-    
-    console.log(`Found ${movies.length} movies matching "${title}"`);
 
     return Response.json(movies, {
       status: 200,
