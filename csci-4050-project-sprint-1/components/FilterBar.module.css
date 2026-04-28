@@ -1,2 +1,44 @@
-.filter select{padding:8px 12px;border-radius:8px;border:2px solid #dcc7b8;background:#f9f7f5;color:#333;font-size:14px;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-.filter select:focus{outline:none;border-color:#2d5016;background:#fff}
+.filter {
+  min-width: 170px;
+}
+
+.filter label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #6b6257;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.filter select {
+  min-height: 48px;
+  border: 1px solid #eadfce;
+  border-radius: 999px;
+  background: #fffaf2;
+  color: #16130f;
+  cursor: pointer;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-size: 0.96rem;
+  font-weight: 800;
+  padding: 0 38px 0 14px;
+}
+
+.filter select:focus {
+  outline: 3px solid rgba(214, 64, 47, 0.16);
+  border-color: #d6402f;
+  background: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .filter {
+    width: 100%;
+  }
+
+  .filter select {
+    width: 100%;
+  }
+}

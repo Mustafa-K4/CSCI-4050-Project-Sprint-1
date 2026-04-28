@@ -72,16 +72,16 @@ export default function SearchBar({ value: propValue = '', onChange, onResults }
     <div className={styles.search}>
       <form onSubmit={onSubmit} className={styles.form}>
         <input
-          placeholder="Search movies..."
+          placeholder="Search by movie title"
           value={value}
           onChange={e => handleInput(e.target.value)}
           aria-label="Search movies"
         />
-        <button type="submit" className={styles.btn} aria-label="Search">Search</button>
+        <button type="submit" className={styles.btn} aria-label="Search">Find</button>
       </form>
 
       {loading && <div className={styles.hint}>Searching…</div>}
-      {error && <div className={styles.hint} style={{ color: 'crimson' }}>{error}</div>}
+      {error && <div className={`${styles.hint} ${styles.errorHint}`}>{error}</div>}
       {!loading && noResults && <div className={styles.hint}>No matching movies found.</div>}
     </div>
   );

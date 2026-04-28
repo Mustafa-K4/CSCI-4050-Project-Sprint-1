@@ -4,27 +4,32 @@
   justify-content: center;
   align-items: center;
   padding: 24px;
-  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(242, 184, 75, 0.24), transparent 28%),
+    radial-gradient(circle at 82% 0%, rgba(214, 64, 47, 0.13), transparent 30%),
+    linear-gradient(180deg, #fffaf2 0%, #f4eadb 55%, #efe2cf 100%);
+  color: #16130f;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
 }
 
 .card {
   width: 100%;
   max-width: 520px;
-  background: #ffffff;
-  border: 1px solid #dbe3f3;
-  border-radius: 12px;
+  background: rgba(255, 250, 242, 0.94);
+  border: 1px solid rgba(234, 223, 206, 0.95);
+  border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 24px 60px rgba(65, 40, 24, 0.12);
 }
 
 .wideCard {
   width: 100%;
   max-width: 760px;
-  background: #ffffff;
-  border: 1px solid #dbe3f3;
-  border-radius: 12px;
+  background: rgba(255, 250, 242, 0.94);
+  border: 1px solid rgba(234, 223, 206, 0.95);
+  border-radius: 24px;
   padding: 24px;
-  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.08);
+  box-shadow: 0 24px 60px rgba(65, 40, 24, 0.12);
 }
 
 .cardHeader {
@@ -37,7 +42,8 @@
 .title {
   margin: 0 0 8px;
   font-size: 1.6rem;
-  color: #102a43;
+  color: #16130f;
+  font-family: Georgia, serif;
 }
 
 .eyebrow {
@@ -46,12 +52,12 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #1d4ed8;
+  color: #d6402f;
 }
 
 .subtitle {
   margin: 0 0 18px;
-  color: #334e68;
+  color: #6b6257;
 }
 
 .form {
@@ -61,12 +67,12 @@
 
 .label {
   font-size: 0.95rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 800;
+  color: #4f463d;
 }
 
 .required {
-  color: #b91c1c;
+  color: #d6402f;
   margin-left: 4px;
 }
 
@@ -74,46 +80,55 @@
   margin-top: 6px;
   width: 100%;
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid #bcccdc;
+  border-radius: 14px;
+  border: 1px solid #eadfce;
+  background: #fffaf2;
+  color: #16130f;
   font-size: 0.95rem;
+}
+
+.input:focus {
+  outline: 3px solid rgba(214, 64, 47, 0.16);
+  border-color: #d6402f;
+  background: #ffffff;
 }
 
 .checkboxRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #1f2937;
+  color: #4f463d;
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .checkboxInput {
   width: 18px;
   height: 18px;
-  accent-color: #2563eb;
+  accent-color: #d6402f;
 }
 
 .button {
   margin-top: 6px;
   border: none;
-  border-radius: 8px;
-  background: #2563eb;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d6402f, #f06a33);
   color: #ffffff;
   padding: 10px 14px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(214, 64, 47, 0.22);
 }
 
 .secondaryButton {
   margin-top: 6px;
-  border: 1px solid #bcccdc;
-  border-radius: 8px;
-  background: #f8fafc;
-  color: #1d4ed8;
+  border: 1px solid #eadfce;
+  border-radius: 999px;
+  background: #fffaf2;
+  color: #16130f;
   padding: 10px 14px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 900;
 }
 
 .button:disabled {
@@ -139,12 +154,12 @@
   justify-content: center;
   min-height: 42px;
   border: none;
-  border-radius: 8px;
-  background: #2563eb;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #d6402f, #f06a33);
   color: #ffffff;
   padding: 10px 14px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 900;
   text-decoration: none;
 }
 
@@ -153,17 +168,18 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  color: #334e68;
+  color: #6b6257;
 }
 
 .textLink {
-  color: #1d4ed8;
+  color: #d6402f;
   text-decoration: underline;
   text-underline-offset: 2px;
+  font-weight: 800;
 }
 
 .textLink:hover {
-  color: #1e40af;
+  color: #9f251d;
 }
 
 .closeButton {
@@ -173,16 +189,17 @@
   width: 36px;
   height: 36px;
   border-radius: 999px;
-  border: 1px solid #d0d7e2;
-  color: #334e68;
+  border: 1px solid #eadfce;
+  color: #16130f;
   text-decoration: none;
   font-size: 1.5rem;
   line-height: 1;
-  background: #f8fafc;
+  background: #fffaf2;
 }
 
 .closeButton:hover {
-  background: #eef2ff;
+  color: #d6402f;
+  border-color: rgba(214, 64, 47, 0.34);
 }
 
 .message {
@@ -190,13 +207,15 @@
   padding: 10px 12px;
   background: #ecfdf3;
   color: #14532d;
+  font-weight: 800;
 }
 
 .error {
   border-radius: 8px;
   padding: 10px 12px;
-  background: #fef2f2;
-  color: #991b1b;
+  background: #fff0ed;
+  color: #9f251d;
+  font-weight: 800;
 }
 
 .headerRow {
@@ -219,27 +238,28 @@
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  border: 1px solid #c7d2fe;
+  border: 1px solid #eadfce;
   border-radius: 999px;
   padding: 8px 14px;
-  background: #eef2ff;
-  color: #1e3a8a;
-  font-weight: 600;
+  background: #fffaf2;
+  color: #16130f;
+  font-weight: 900;
   text-decoration: none;
 }
 
 .secondaryActionLink:hover {
-  background: #dbeafe;
+  color: #d6402f;
+  border-color: rgba(214, 64, 47, 0.34);
 }
 
 .logoutBtn {
-  border: 1px solid #b91c1c;
-  color: #b91c1c;
-  background: #fff5f5;
-  border-radius: 8px;
+  border: 1px solid #f1b2a8;
+  color: #9f251d;
+  background: #fff0ed;
+  border-radius: 999px;
   padding: 8px 12px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 900;
 }
 
 .menuList {
@@ -254,11 +274,11 @@
 .dashboardHero {
   margin: 18px 0 22px;
   padding: 18px;
-  border: 1px solid #dbe3f3;
-  border-radius: 14px;
+  border: 1px solid #eadfce;
+  border-radius: 20px;
   background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.14), transparent 35%),
-    linear-gradient(135deg, #f8fbff, #eef4ff);
+    radial-gradient(circle at top right, rgba(242, 184, 75, 0.22), transparent 35%),
+    linear-gradient(135deg, #fffaf2, #f8f0df);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -268,7 +288,7 @@
 
 .heroNote {
   margin: 0;
-  color: #486581;
+  color: #6b6257;
   font-size: 0.95rem;
 }
 
@@ -277,9 +297,9 @@
   align-items: center;
   border-radius: 999px;
   padding: 8px 12px;
-  background: #dbeafe;
-  color: #1e3a8a;
-  font-weight: 700;
+  background: #fff3d3;
+  color: #6f4300;
+  font-weight: 900;
   white-space: nowrap;
 }
 
@@ -290,11 +310,11 @@
 }
 
 .adminPanel {
-  border: 1px solid #dbe3f3;
-  border-radius: 14px;
+  border: 1px solid #eadfce;
+  border-radius: 20px;
   padding: 18px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.05);
+  background: #fffaf2;
+  box-shadow: 0 16px 34px rgba(65, 40, 24, 0.08);
 }
 
 .adminPanelTop {
@@ -311,28 +331,28 @@
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  background: linear-gradient(135deg, #d6402f, #f06a33);
   color: #ffffff;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: 0.04em;
 }
 
 .adminPanelLabel {
-  color: #486581;
+  color: #6b6257;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .adminPanelTitle {
   margin: 14px 0 8px;
   font-size: 1.05rem;
-  color: #102a43;
+  color: #16130f;
 }
 
 .adminPanelText {
   margin: 0;
-  color: #52606d;
+  color: #6b6257;
   line-height: 1.5;
 }
 

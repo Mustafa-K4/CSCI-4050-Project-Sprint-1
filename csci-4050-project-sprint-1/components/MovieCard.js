@@ -25,6 +25,7 @@ function getFavoriteMovieId(item) {
 export default function MovieCard({ movie }) {
   const router = useRouter();
   const placeholder = 'https://via.placeholder.com/300x450?text=No+Poster';
+  const genreText = [movie?.genre, movie?.secondaryGenre].filter(Boolean).join(' / ');
   const [userId, setUserId] = useState('');
   const [isFavorited, setIsFavorited] = useState(false);
   const [isSubmittingFavorite, setIsSubmittingFavorite] = useState(false);
@@ -131,11 +132,17 @@ export default function MovieCard({ movie }) {
           className={styles.poster}
           loading="lazy"
         />
-        <div className={styles.rating}>{movie?.rating ?? '—'}</div>
+        <div className={styles.rating}>{movie?.age_rating || 'NR'}</div>
       </div>
 
       <div className={styles.body}>
-        <h3 className={styles.title}>{movie?.title}</h3>
+        <div className={styles.kicker}>
+          <span>{movie?.status || 'Movie'}</span>
+          <span>{movie?.rating ? `User ${movie.rating}` : 'No rating'}</span>
+        </div>
+        <h3 className={styles.title}>{movie?.title || 'Untitled Movie'}</h3>
+        <p className={styles.meta}>{genreText || 'Genre not set'}</p>
+        <span className={styles.detailsLink}>View details</span>
       </div>
     </article>
   );

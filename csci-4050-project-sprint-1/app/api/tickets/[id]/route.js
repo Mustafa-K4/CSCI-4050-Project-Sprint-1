@@ -57,15 +57,12 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Update allowed fields
     if (body.seat !== undefined) ticket.seat = String(body.seat)
     if (body.ticketType !== undefined) ticket.ticketType = String(body.ticketType)
     if (body.price !== undefined) ticket.price = Number(body.price)
     if (body.basePrice !== undefined) ticket.basePrice = Number(body.basePrice)
 
     await ticket.save()
-
-    console.log('Ticket updated successfully:', ticket._id)
 
     return Response.json(ticket, { status: 200 })
   } catch (error) {
@@ -98,9 +95,6 @@ export async function DELETE(request, { params }) {
         { status: 404 }
       )
     }
-
-    console.log('Ticket deleted successfully:', ticket._id)
-
     return Response.json(
       { success: true, message: 'Ticket deleted' },
       { status: 200 }

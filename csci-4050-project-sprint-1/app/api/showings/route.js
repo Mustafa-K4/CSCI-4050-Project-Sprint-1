@@ -9,13 +9,25 @@ import { ensureDefaultShowrooms } from '../../../lib/admin/showrooms';
 export async function GET(request) {
   try {
     await dbConnect();
-    console.log('Database connected successfully');
+    const { searchParams } = new URL(request.url);
+    const movieId = String(searchParams.get('movieId') || '').trim();
 
-    const showings = await Showing.find({})
+    const query = {};
+    if (movieId) {
+      if (!mongoose.Types.ObjectId.isValid(movieId)) {
+        return Response.json(
+          { error: 'Invalid movie ID format.' },
+          { status: 400 }
+        );
+      }
+
+      query.showingMovie = movieId;
+    }
+
+    const showings = await Showing.find(query)
       .sort({ date: 1, time: 1 })
       .populate('showroomID')
       .populate('showingMovie');
-    console.log(`Found ${showings.length} showings in database`);
 
     return Response.json(showings, {
       status: 200,
@@ -49,7 +61,6 @@ export async function POST(request) {
 
     await dbConnect();
     await ensureDefaultShowrooms();
-    console.log('Database connected successfully');
 
     const body = await request.json();
 
@@ -164,10 +175,9 @@ export async function POST(request) {
 
     const savedShowing = await showing.save();
     await savedShowing.populate(['showroomID', 'showingMovie']);
-    console.log('Showing created successfully:', savedShowing._id);
 
     await Movie.findByIdAndUpdate(payload.showingMovie, {
-      $addToSet: { showtimes: payload.time },
+      $addToSet: { showtimes: savedShowing._id },
       $set: { showroom: showroom.cinema },
     });
 

@@ -3,11 +3,9 @@ import Promotion from '../../../models/promotion';
 
 export async function GET(request) {
   try {
-    const conn = await dbConnect();
-    console.log('Database connected successfully');
+    await dbConnect();
 
     const promotions = await Promotion.find({});
-    console.log(`Found ${promotions.length} promotions in database`);
 
     return Response.json(promotions, {
       status: 200,
@@ -31,12 +29,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
-    const conn = await dbConnect();
-    console.log('Database connected successfully');
+    await dbConnect();
 
     const body = await request.json();
-    
-    // Validate required fields
+
     const requiredFields = ['description', 'discountAmount', 'expirationDate', 'promoCode'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
@@ -55,7 +51,6 @@ export async function POST(request) {
     });
 
     const savedPromotion = await promotion.save();
-    console.log('Promotion created successfully:', savedPromotion._id);
 
     return Response.json(savedPromotion, {
       status: 201,

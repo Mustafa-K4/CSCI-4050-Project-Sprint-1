@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import LoginModal from '../../../components/auth/LoginModal'
 import styles from './page.module.css'
 
@@ -19,6 +19,25 @@ function formatTime(t) {
   const ampm = hh >= 12 ? 'PM' : 'AM'
   const hour = ((hh + 11) % 12) + 1
   return `${hour}:${String(mm).padStart(2, '0')} ${ampm}`
+}
+
+function formatDate(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function formatShowtimeValue(showing) {
+  const datePart = formatDate(showing?.date)
+  const timePart = showing?.time ? formatTime(showing.time) : ''
+  return [datePart, timePart].filter(Boolean).join(' • ') || '—'
 }
 
 function getStoredUserId() {
@@ -66,11 +85,43 @@ function createEmptyCard() {
   }
 }
 
+function createEmptyTicketRequest() {
+  return {
+    adult: 0,
+    child: 0,
+    senior: 0,
+  }
+}
+
+function normalizeTicketCounts(ticketCounts, selectedSeatCount) {
+  const seatCount = Math.max(Number(selectedSeatCount) || 0, 0)
+  const child = Math.min(Math.max(Math.floor(Number(ticketCounts.child) || 0), 0), seatCount)
+  const senior = Math.min(Math.max(Math.floor(Number(ticketCounts.senior) || 0), 0), Math.max(seatCount - child, 0))
+  const adult = Math.max(seatCount - child - senior, 0)
+
+  return { adult, child, senior }
+}
+
+function assignTicketTypesToSeats(seats, ticketCounts) {
+  const nextSeats = {}
+  const sortedSeatKeys = Object.keys(seats).sort(sortSeatKeys)
+
+  sortedSeatKeys.forEach((key, index) => {
+    if (index < ticketCounts.adult) {
+      nextSeats[key] = 'adult'
+    } else if (index < ticketCounts.adult + ticketCounts.child) {
+      nextSeats[key] = 'child'
+    } else {
+      nextSeats[key] = 'senior'
+    }
+  })
+
+  return nextSeats
+}
+
 export default function BookingPage() {
   const params = useParams()
   const searchParams = useSearchParams()
-  const router = useRouter()
-
   const id = params?.id
   const showingId = searchParams?.get('showingId') || ''
 
@@ -81,10 +132,7 @@ export default function BookingPage() {
   const [step, setStep] = useState(STEP_SELECT)
 
   const [selectedSeats, setSelectedSeats] = useState({}) // { "0-0": "adult", "0-1": "child", ... }
-  const [seatAgeModalOpen, setSeatAgeModalOpen] = useState(false)
-  const [pendingSeatKey, setPendingSeatKey] = useState(null)
-  const [bookingId, setBookingId] = useState(null)
-  const [bookingCreating, setBookingCreating] = useState(false)
+  const [requestedTickets, setRequestedTickets] = useState(createEmptyTicketRequest())
   const [profileLoading, setProfileLoading] = useState(true)
   const [bookedSeats, setBookedSeats] = useState(new Set()) // Seats already booked for this showing
   const [customerInfo, setCustomerInfo] = useState({
@@ -98,6 +146,46 @@ export default function BookingPage() {
   const [checkoutError, setCheckoutError] = useState('')
   const [confirmationCode, setConfirmationCode] = useState('')
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+
+  async function loadUserProfile(userId) {
+    if (!userId) {
+      setProfileLoading(false)
+      return false
+    }
+
+    setProfileLoading(true)
+    try {
+      const response = await fetch(`/api/users/${userId}`)
+      const data = await response.json()
+
+      if (!response.ok || !data?.success || !data?.user) {
+        return false
+      }
+
+      const fetchedUser = data.user
+      const cards = Array.isArray(fetchedUser.paymentCards)
+        ? fetchedUser.paymentCards.slice(0, 3)
+        : Array.isArray(fetchedUser.payments)
+          ? fetchedUser.payments.slice(0, 3)
+          : []
+
+      setCustomerInfo({
+        name: String(fetchedUser.name || ''),
+        email: String(fetchedUser.email || ''),
+        address: Array.isArray(fetchedUser.address)
+          ? String(fetchedUser.address[0] || '')
+          : String(fetchedUser.address || ''),
+      })
+      setSavedCards(cards)
+      setPaymentChoice(cards.length > 0 ? 'saved-0' : 'new')
+      return true
+    } catch {
+      return false
+    } finally {
+      setProfileLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (!id) {
@@ -175,7 +263,6 @@ export default function BookingPage() {
         if (Array.isArray(tickets)) {
           const bookedSeatKeys = new Set(tickets.map(t => t.seat))
           setBookedSeats(bookedSeatKeys)
-          console.log(`Found ${bookedSeatKeys.size} booked seats for showing ${showingId}`)
         }
       })
       .catch(requestError => {
@@ -188,39 +275,6 @@ export default function BookingPage() {
   }, [showingId])
 
   useEffect(() => {
-    // Create booking on page load
-    async function createInitialBooking() {
-      if (!id || !showingId || bookingCreating) return
-      
-      const userId = getStoredUserId()
-      if (!userId) return
-
-      setBookingCreating(true)
-      try {
-        const response = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            movieId: id,
-            showingId,
-            userId,
-          }),
-        })
-        const data = await response.json()
-        if (response.ok && data?.booking?._id) {
-          setBookingId(data.booking._id)
-        }
-      } catch (err) {
-        console.error('Failed to create initial booking:', err)
-      } finally {
-        setBookingCreating(false)
-      }
-    }
-
-    createInitialBooking()
-  }, [id, showingId])
-
-  useEffect(() => {
     let cancelled = false
 
     async function loadProfile() {
@@ -229,51 +283,9 @@ export default function BookingPage() {
         if (!cancelled) setProfileLoading(false)
         return
       }
-
-      try {
-        const response = await fetch(`/api/users/${userId}`)
-        const data = await response.json()
-
-        if (!response.ok || !data?.success || !data?.user || cancelled) {
-          return
-        }
-
-        const fetchedUser = data.user
-        const cards = Array.isArray(fetchedUser.paymentCards)
-          ? fetchedUser.paymentCards.slice(0, 3)
-          : Array.isArray(fetchedUser.payments)
-            ? fetchedUser.payments.slice(0, 3)
-            : []
-
-        setCustomerInfo({
-          name: String(fetchedUser.name || ''),
-          email: String(fetchedUser.email || ''),
-          address: Array.isArray(fetchedUser.address)
-            ? String(fetchedUser.address[0] || '')
-            : String(fetchedUser.address || ''),
-        })
-        setSavedCards(cards)
-        setPaymentChoice(cards.length > 0 ? 'saved-0' : 'new')
-      } catch {
-        // Leave checkout available with manual entry.
-      } finally {
-        if (!cancelled) setProfileLoading(false)
-      }
-    }
-
-    // Check if we need to restore booking state after login
-    if (typeof window !== 'undefined') {
-      const savedState = sessionStorage.getItem('bookingState')
-      if (savedState) {
-        try {
-          const state = JSON.parse(savedState)
-          if (state.selectedSeats && Array.isArray(state.selectedSeats)) {
-            setSelectedSeats(new Set(state.selectedSeats))
-          }
-          sessionStorage.removeItem('bookingState')
-        } catch (e) {
-          console.error('Failed to restore booking state:', e)
-        }
+      const loaded = await loadUserProfile(userId)
+      if (!loaded && !cancelled) {
+        setProfileLoading(false)
       }
     }
 
@@ -284,11 +296,20 @@ export default function BookingPage() {
     }
   }, [])
 
-  const adult = Object.values(selectedSeats).filter(t => t === 'adult').length
-  const child = Object.values(selectedSeats).filter(t => t === 'child').length
-  const senior = Object.values(selectedSeats).filter(t => t === 'senior').length
-  const ticketCount = adult + child + senior
-  const subtotal = (adult * PRICES.adult) + (child * PRICES.child) + (senior * PRICES.senior)
+  const selectedAdult = Object.values(selectedSeats).filter(t => t === 'adult').length
+  const selectedChild = Object.values(selectedSeats).filter(t => t === 'child').length
+  const selectedSenior = Object.values(selectedSeats).filter(t => t === 'senior').length
+  const selectedTicketCount = selectedAdult + selectedChild + selectedSenior
+  const requestedTicketCount =
+    requestedTickets.adult + requestedTickets.child + requestedTickets.senior
+  const subtotal =
+    (requestedTickets.adult * PRICES.adult) +
+    (requestedTickets.child * PRICES.child) +
+    (requestedTickets.senior * PRICES.senior)
+  const selectionComplete =
+    requestedTickets.adult === selectedAdult &&
+    requestedTickets.child === selectedChild &&
+    requestedTickets.senior === selectedSenior
 
   const selectedSeatKeys = useMemo(
     () => Object.keys(selectedSeats).sort(sortSeatKeys),
@@ -303,136 +324,78 @@ export default function BookingPage() {
     [selectedSeatKeys, selectedSeats],
   )
 
-  // Map seat keys to ticket IDs
-  const [seatToTicketId, setSeatToTicketId] = useState({}) // { "0-0": "ticketId123", ... }
+  const seatLayout = useMemo(() => {
+    const seatCount = Number(showing?.showroomID?.seatcount || 40)
+    const cols = seatCount <= 40 ? 8 : seatCount <= 60 ? 10 : 12
+    const rows = Math.ceil(seatCount / cols)
+    return { rows, cols, seatCount }
+  }, [showing])
 
   const seatsArray = useMemo(() => {
-    const rows = 8
-    const cols = 8
     const arr = []
+    let seatIndex = 0
 
-    for (let r = 0; r < rows; r += 1) {
+    for (let r = 0; r < seatLayout.rows; r += 1) {
       const row = []
-      for (let c = 0; c < cols; c += 1) row.push({ r, c })
+      for (let c = 0; c < seatLayout.cols; c += 1) {
+        if (seatIndex >= seatLayout.seatCount) break
+        row.push({ r, c })
+        seatIndex += 1
+      }
       arr.push(row)
     }
 
     return arr
-  }, [])
+  }, [seatLayout])
 
   function toggleSeat(r, c) {
     if (step !== STEP_SELECT) return
 
     const key = `${r}-${c}`
-    
+
     // Don't allow selection of already booked seats
     if (bookedSeats.has(key) && !selectedSeats[key]) {
       return
     }
 
     if (selectedSeats[key]) {
-      // Remove seat and its ticket
-      const ticketId = seatToTicketId[key]
+      const removedType = selectedSeats[key]
       const updatedSeats = { ...selectedSeats }
       delete updatedSeats[key]
       setSelectedSeats(updatedSeats)
+      setCheckoutError('')
 
-      // Remove ticket from booking
-      if (bookingId && ticketId) {
-        removeTicketFromBooking(ticketId)
-      }
-
-      // Clean up seat-ticket mapping
-      const newMapping = { ...seatToTicketId }
-      delete newMapping[key]
-      setSeatToTicketId(newMapping)
-    } else {
-      // Open age selection modal for new seat
-      setPendingSeatKey(key)
-      setSeatAgeModalOpen(true)
-    }
-  }
-
-  function handleSelectAgeForSeat(ageType) {
-    if (!pendingSeatKey || !bookingId) return
-
-    // Create ticket first
-    const ticketData = {
-      booking: bookingId,
-      showing: showingId,
-      seat: pendingSeatKey,
-      ticketType: ageType,
-      price: PRICES[ageType] || PRICES.adult,
+      setRequestedTickets((currentTickets) => normalizeTicketCounts({
+        ...currentTickets,
+        [removedType]: Math.max((currentTickets[removedType] || 0) - 1, 0),
+      }, Object.keys(updatedSeats).length))
+      return
     }
 
-    fetch('/api/tickets', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ticketData),
+    setSelectedSeats({
+      ...selectedSeats,
+      [key]: 'adult',
     })
-      .then(res => res.json())
-      .then(ticketResponse => {
-        if (ticketResponse?._id) {
-          const ticketId = ticketResponse._id
-
-          // Now add ticket to booking
-          return fetch(`/api/bookings/${bookingId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ticketId,
-              action: 'add',
-            }),
-          }).then(res => res.json()).then(bookingResponse => {
-            if (bookingResponse.success) {
-              // Update local state
-              setSelectedSeats(prev => ({
-                ...prev,
-                [pendingSeatKey]: ageType,
-              }))
-              setSeatToTicketId(prev => ({
-                ...prev,
-                [pendingSeatKey]: ticketId,
-              }))
-              console.log(`Ticket ${ticketId} created and added to booking`)
-            } else {
-              console.error('Failed to add ticket to booking:', bookingResponse.error)
-            }
-          })
-        } else {
-          console.error('Failed to create ticket:', ticketResponse.error)
-        }
-      })
-      .catch(err => console.error('Error creating/adding ticket:', err))
-      .finally(() => {
-        setSeatAgeModalOpen(false)
-        setPendingSeatKey(null)
-      })
+    setRequestedTickets((currentTickets) => ({
+      ...currentTickets,
+      adult: currentTickets.adult + 1,
+    }))
+    setCheckoutError('')
   }
 
-  function removeTicketFromBooking(ticketId) {
-    fetch(`/api/bookings/${bookingId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticketId,
-        action: 'remove',
-      }),
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (!data.success) {
-          console.error('Failed to remove ticket from booking:', data.error)
-        } else {
-          console.log(`Ticket ${ticketId} removed from booking`)
-        }
-      })
-      .catch(err => console.error('Error removing ticket:', err))
-  }
+  function updateRequestedTickets(type, value) {
+    if (type === 'adult') return
 
-  function updateBookingTickets(seatsToUpdate = selectedSeats) {
-    // This function is deprecated - now using single ticket operations
-    // Kept for reference, but individual seat operations handle it now
+    const parsedValue = Number(value)
+    const nextValue = Number.isFinite(parsedValue) && parsedValue >= 0 ? Math.floor(parsedValue) : 0
+    const nextTickets = normalizeTicketCounts({
+      ...requestedTickets,
+      [type]: nextValue,
+    }, selectedTicketCount)
+
+    setRequestedTickets(nextTickets)
+    setSelectedSeats(assignTicketTypesToSeats(selectedSeats, nextTickets))
+    setCheckoutError('')
   }
 
   function updateCustomerInfo(field, value) {
@@ -452,8 +415,13 @@ export default function BookingPage() {
   }
 
   function handleContinueToDetails() {
-    if (ticketCount === 0) {
+    if (selectedTicketCount === 0) {
       setCheckoutError('Select at least one seat before continuing.')
+      return
+    }
+
+    if (!selectionComplete || selectedTicketCount !== requestedTicketCount) {
+      setCheckoutError('Ticket age groups must match the number of selected seats.')
       return
     }
 
@@ -462,10 +430,8 @@ export default function BookingPage() {
   }
 
   function handleContinueToCheckout() {
-    // Check if user is authenticated
     const userId = getStoredUserId()
     if (!userId) {
-      // Open login modal instead of redirecting
       setLoginModalOpen(true)
       return
     }
@@ -492,51 +458,13 @@ export default function BookingPage() {
     }
   }
 
-  function handleLoginSuccess() {
-    // Close modal
+  async function handleLoginSuccess() {
     setLoginModalOpen(false)
-    // Reload profile data with new user
-    setProfileLoading(true)
-    
-    // Small delay to ensure user is stored in localStorage
-    setTimeout(async () => {
-      const userId = getStoredUserId()
-      if (!userId) {
-        setProfileLoading(false)
-        return
-      }
-
-      try {
-        const response = await fetch(`/api/users/${userId}`)
-        const data = await response.json()
-
-        if (response.ok && data?.success && data?.user) {
-          const fetchedUser = data.user
-          const cards = Array.isArray(fetchedUser.paymentCards)
-            ? fetchedUser.paymentCards.slice(0, 3)
-            : Array.isArray(fetchedUser.payments)
-              ? fetchedUser.payments.slice(0, 3)
-              : []
-
-          setCustomerInfo({
-            name: String(fetchedUser.name || ''),
-            email: String(fetchedUser.email || ''),
-            address: Array.isArray(fetchedUser.address)
-              ? String(fetchedUser.address[0] || '')
-              : String(fetchedUser.address || ''),
-          })
-          setSavedCards(cards)
-          setPaymentChoice(cards.length > 0 ? 'saved-0' : 'new')
-          
-          // Move to checkout step
-          setStep(STEP_CHECKOUT)
-        }
-      } catch (error) {
-        console.error('Failed to reload profile:', error)
-      } finally {
-        setProfileLoading(false)
-      }
-    }, 300)
+    const userId = getStoredUserId()
+    const loaded = await loadUserProfile(userId)
+    if (loaded) {
+      setStep(STEP_CHECKOUT)
+    }
   }
 
   function validateCheckout() {
@@ -587,6 +515,12 @@ export default function BookingPage() {
   }
 
   function handleCompleteCheckout() {
+    if (!selectionComplete || selectedTicketCount !== requestedTicketCount) {
+      setCheckoutError('Selected seats must still match the requested ticket counts.')
+      setStep(STEP_SELECT)
+      return
+    }
+
     const validationError = validateCheckout()
     if (validationError) {
       setCheckoutError(validationError)
@@ -595,6 +529,97 @@ export default function BookingPage() {
 
     setCheckoutError('')
     setStep(STEP_PAYMENT)
+  }
+
+  const ticketSummaryText = [
+    requestedTickets.adult > 0 ? `${requestedTickets.adult} adult` : '',
+    requestedTickets.child > 0 ? `${requestedTickets.child} child` : '',
+    requestedTickets.senior > 0 ? `${requestedTickets.senior} senior` : '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  async function handleFinalizeBooking() {
+    const userId = getStoredUserId()
+    if (!userId) {
+      setLoginModalOpen(true)
+      return
+    }
+
+    setCheckoutError('')
+    setPaymentSubmitting(true)
+
+    try {
+      if (!selectionComplete || selectedTicketCount !== requestedTicketCount) {
+        throw new Error('Selected seats must match the requested ticket counts before payment.')
+      }
+
+      const paymentMethod = paymentChoice === 'new' ? 'card' : 'saved-card'
+
+      const bookingResponse = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movieId: id,
+          showingId,
+          userId,
+          showtime: formatShowtimeValue(showing),
+          seats: selectedSeatKeys,
+          seatSelections: selectedSeats,
+          ticketTypes: requestedTickets,
+          customerInfo,
+          paymentMethod,
+        }),
+      })
+
+      const bookingData = await bookingResponse.json()
+      if (!bookingResponse.ok || !bookingData?.booking?._id) {
+        const details = Array.isArray(bookingData?.details) ? ` ${bookingData.details.join(' ')}` : ''
+        throw new Error(bookingData?.error ? `${bookingData.error}${details}` : 'Failed to create booking.')
+      }
+
+      const confirmResponse = await fetch('/api/bookings/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: bookingData.booking._id,
+          userId,
+          paymentMethod,
+        }),
+      })
+
+      const confirmData = await confirmResponse.json()
+      if (!confirmResponse.ok) {
+        if (confirmResponse.status === 409 && Array.isArray(confirmData?.conflictingSeats)) {
+          setBookedSeats((prev) => new Set([...prev, ...confirmData.conflictingSeats]))
+          setSelectedSeats((prev) => {
+            const next = { ...prev }
+            const nextTickets = { ...requestedTickets }
+
+            confirmData.conflictingSeats.forEach((seat) => {
+              const seatType = next[seat]
+              if (seatType) {
+                nextTickets[seatType] = Math.max((nextTickets[seatType] || 0) - 1, 0)
+              }
+              delete next[seat]
+            })
+            setRequestedTickets(normalizeTicketCounts(nextTickets, Object.keys(next).length))
+            return next
+          })
+          setStep(STEP_SELECT)
+        }
+
+        throw new Error(confirmData?.error || 'Failed to confirm booking.')
+      }
+
+      setConfirmationCode(confirmData?.booking?.confirmationCode || bookingData.booking.confirmationCode)
+      setBookedSeats((prev) => new Set([...prev, ...selectedSeatKeys]))
+      setStep(STEP_CONFIRMED)
+    } catch (submissionError) {
+      setCheckoutError(submissionError.message || 'Unable to complete booking.')
+    } finally {
+      setPaymentSubmitting(false)
+    }
   }
 
   return (
@@ -613,7 +638,7 @@ export default function BookingPage() {
         <div className={styles.grid}>
           <div className={styles.left}>
             <p className={styles.meta}>
-              {movie?.title || 'Movie'} • {showing?.time ? formatTime(showing.time) : '—'}
+              {movie?.title || 'Movie'} • {formatShowtimeValue(showing)}
             </p>
 
             <div className={styles.stepRow}>
@@ -633,28 +658,73 @@ export default function BookingPage() {
                   <div className={styles.ticketRow}>
                     <label>
                       Adult ($12)
-                      <input type="number" min={0} value={adult} readOnly />
+                      <input
+                        type="number"
+                        min={0}
+                        value={requestedTickets.adult}
+                        readOnly
+                        aria-readonly="true"
+                      />
                     </label>
                     <label>
                       Child ($8)
-                      <input type="number" min={0} value={child} readOnly />
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.max(selectedTicketCount - requestedTickets.senior, 0)}
+                        value={requestedTickets.child}
+                        disabled={selectedTicketCount === 0}
+                        onChange={(event) => updateRequestedTickets('child', event.target.value)}
+                      />
                     </label>
                     <label>
                       Senior ($10)
-                      <input type="number" min={0} value={senior} readOnly />
+                      <input
+                        type="number"
+                        min={0}
+                        max={Math.max(selectedTicketCount - requestedTickets.child, 0)}
+                        value={requestedTickets.senior}
+                        disabled={selectedTicketCount === 0}
+                        onChange={(event) => updateRequestedTickets('senior', event.target.value)}
+                      />
                     </label>
                   </div>
                   <p className={styles.ticketHelp}>
-                    Click a seat, then choose the ticket type (Adult, Child, Senior) for that seat.
+                    Select seats first. Each selected seat starts as an adult ticket; adjust child or senior
+                    counts here if needed.
+                  </p>
+                  <p className={styles.selectionStatus}>
+                    Selected {selectedTicketCount} seat{selectedTicketCount === 1 ? '' : 's'} • Ticket total {requestedTicketCount}
                   </p>
                 </section>
 
                 <section className={styles.seatsSection}>
                   <h4>Select Seats</h4>
+                  <p className={styles.helperText}>
+                    {showing?.showroomID?.cinema || 'Selected showroom'} • {seatLayout.seatCount} seats
+                  </p>
                   <div className={styles.screen}>SCREEN</div>
+                  <div className={styles.legendRow}>
+                    <span className={styles.legendItem}>
+                      <span className={`${styles.legendSwatch} ${styles.legendAvailable}`}></span>
+                      Available
+                    </span>
+                    <span className={styles.legendItem}>
+                      <span className={`${styles.legendSwatch} ${styles.legendSelected}`}></span>
+                      Selected
+                    </span>
+                    <span className={styles.legendItem}>
+                      <span className={`${styles.legendSwatch} ${styles.legendBooked}`}></span>
+                      Booked
+                    </span>
+                  </div>
                   <div className={styles.seatGrid}>
                     {seatsArray.map((row, rowIndex) => (
-                      <div key={rowIndex} className={styles.seatRow}>
+                      <div
+                        key={rowIndex}
+                        className={styles.seatRow}
+                        style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}
+                      >
                         {row.map(({ r, c }) => {
                           const key = `${r}-${c}`
                           const ageType = selectedSeats[key]
@@ -684,19 +754,19 @@ export default function BookingPage() {
                 <section className={styles.summaryPanel}>
                   <h4>Order Summary</h4>
                   <div className={styles.summaryRow}>
-                    <span>Adult Tickets ({adult})</span>
-                    <span>${(adult * PRICES.adult).toFixed(2)}</span>
+                    <span>Adult Tickets ({requestedTickets.adult})</span>
+                    <span>${(requestedTickets.adult * PRICES.adult).toFixed(2)}</span>
                   </div>
-                  {child > 0 && (
+                  {requestedTickets.child > 0 && (
                     <div className={styles.summaryRow}>
-                      <span>Child Tickets ({child})</span>
-                      <span>${(child * PRICES.child).toFixed(2)}</span>
+                      <span>Child Tickets ({requestedTickets.child})</span>
+                      <span>${(requestedTickets.child * PRICES.child).toFixed(2)}</span>
                     </div>
                   )}
-                  {senior > 0 && (
+                  {requestedTickets.senior > 0 && (
                     <div className={styles.summaryRow}>
-                      <span>Senior Tickets ({senior})</span>
-                      <span>${(senior * PRICES.senior).toFixed(2)}</span>
+                      <span>Senior Tickets ({requestedTickets.senior})</span>
+                      <span>${(requestedTickets.senior * PRICES.senior).toFixed(2)}</span>
                     </div>
                   )}
                   <div className={styles.summaryRow}>
@@ -711,7 +781,7 @@ export default function BookingPage() {
 
                 <button
                   className={styles.confirmBtn}
-                  disabled={ticketCount === 0}
+                  disabled={selectedTicketCount === 0}
                   onClick={handleContinueToDetails}
                 >
                   See the Details
@@ -729,7 +799,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.detailCard}>
                     <span className={styles.detailLabel}>Showtime</span>
-                    <span className={styles.detailValue}>{showing?.time ? formatTime(showing.time) : '—'}</span>
+                    <span className={styles.detailValue}>{formatShowtimeValue(showing)}</span>
                   </div>
                   <div className={styles.detailCard}>
                     <span className={styles.detailLabel}>Seats</span>
@@ -737,16 +807,30 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.detailCard}>
                     <span className={styles.detailLabel}>Tickets</span>
-                    <span className={styles.detailValue}>{ticketCount} adult</span>
+                    <span className={styles.detailValue}>{ticketSummaryText || '—'}</span>
                   </div>
                 </div>
 
                 <section className={styles.summaryPanel}>
                   <h4>Price Details</h4>
-                  <div className={styles.summaryRow}>
-                    <span>{ticketCount} x Adult Tickets</span>
-                    <span>${subtotal.toFixed(2)}</span>
-                  </div>
+                  {requestedTickets.adult > 0 ? (
+                    <div className={styles.summaryRow}>
+                      <span>{requestedTickets.adult} x Adult Tickets</span>
+                      <span>${(requestedTickets.adult * PRICES.adult).toFixed(2)}</span>
+                    </div>
+                  ) : null}
+                  {requestedTickets.child > 0 ? (
+                    <div className={styles.summaryRow}>
+                      <span>{requestedTickets.child} x Child Tickets</span>
+                      <span>${(requestedTickets.child * PRICES.child).toFixed(2)}</span>
+                    </div>
+                  ) : null}
+                  {requestedTickets.senior > 0 ? (
+                    <div className={styles.summaryRow}>
+                      <span>{requestedTickets.senior} x Senior Tickets</span>
+                      <span>${(requestedTickets.senior * PRICES.senior).toFixed(2)}</span>
+                    </div>
+                  ) : null}
                   <div className={`${styles.summaryRow} ${styles.totalRow}`}>
                     <span>Total</span>
                     <span>${subtotal.toFixed(2)}</span>
@@ -770,7 +854,7 @@ export default function BookingPage() {
 
                 <div className={styles.fieldGroup}>
                   <label className={styles.fieldLabel}>
-                    Full Name <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                    Full Name <span className={styles.required}>*</span>
                     <input
                       className={styles.input}
                       type="text"
@@ -782,7 +866,7 @@ export default function BookingPage() {
                     />
                   </label>
                   <label className={styles.fieldLabel}>
-                    Email Address <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                    Email Address <span className={styles.required}>*</span>
                     <input
                       className={styles.input}
                       type="email"
@@ -849,7 +933,7 @@ export default function BookingPage() {
                   {paymentChoice === 'new' ? (
                     <div className={styles.fieldGroup}>
                       <label className={styles.fieldLabel}>
-                        Cardholder Name <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                        Cardholder Name <span className={styles.required}>*</span>
                         <input
                           className={styles.input}
                           type="text"
@@ -861,7 +945,7 @@ export default function BookingPage() {
                         />
                       </label>
                       <label className={styles.fieldLabel}>
-                        Card Number <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                        Card Number <span className={styles.required}>*</span>
                         <input
                           className={styles.input}
                           type="text"
@@ -874,7 +958,7 @@ export default function BookingPage() {
                       </label>
                       <div className={styles.inlineFields}>
                         <label className={styles.fieldLabel}>
-                          Expiration Date <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                          Expiration Date <span className={styles.required}>*</span>
                           <input
                             className={styles.input}
                             type="text"
@@ -886,7 +970,7 @@ export default function BookingPage() {
                           />
                         </label>
                         <label className={styles.fieldLabel}>
-                          CVV <span style={{ color: '#dc2626', fontSize: '1.1em' }}>*</span>
+                          CVV <span className={styles.required}>*</span>
                           <input
                             className={styles.input}
                             type="text"
@@ -910,7 +994,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Showtime</span>
-                    <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
+                    <span>{formatShowtimeValue(showing)}</span>
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Seats</span>
@@ -937,7 +1021,7 @@ export default function BookingPage() {
               <section className={styles.stepPanel}>
                 <h3 className={styles.sectionTitle}>Payment Processing</h3>
                 
-                <div className={styles.paymentMockup}>
+                <div className={styles.paymentLayout}>
                   <div className={styles.paymentProcessor}>
                     <div className={styles.processorHeader}>
                       <h4>Secure Payment</h4>
@@ -968,7 +1052,7 @@ export default function BookingPage() {
                     </div>
 
                     <div className={styles.securityNote}>
-                      <p>Your payment information is secure. This is a mockup demonstration of the payment processing page.</p>
+                      <p>Your payment information is secure. Review the payment details before completing the booking.</p>
                     </div>
                   </div>
 
@@ -980,7 +1064,7 @@ export default function BookingPage() {
                     </div>
                     <div className={styles.summaryRow}>
                       <span>Showtime</span>
-                      <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
+                      <span>{formatShowtimeValue(showing)}</span>
                     </div>
                     <div className={styles.summaryRow}>
                       <span>Seats</span>
@@ -994,7 +1078,7 @@ export default function BookingPage() {
                 </div>
 
                 <div className={styles.paymentNote}>
-                  <p><strong>Note:</strong> This is a mockup demonstration. In the final implementation, this page will integrate with a real payment processor (Stripe, PayPal, etc.). The payment processing and order confirmation will be completed in the final demo.</p>
+                  <p><strong>Note:</strong> Submitting this step completes the booking and sends the confirmation email.</p>
                 </div>
 
                 <div className={styles.actionRow}>
@@ -1004,12 +1088,10 @@ export default function BookingPage() {
                   <button 
                     type="button" 
                     className={styles.confirmBtn} 
-                    onClick={() => {
-                      setConfirmationCode(`BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)
-                      setStep(STEP_CONFIRMED)
-                    }}
+                    onClick={handleFinalizeBooking}
+                    disabled={paymentSubmitting}
                   >
-                    Complete Payment (Demo)
+                    {paymentSubmitting ? 'Processing...' : 'Complete Payment'}
                   </button>
                 </div>
               </section>
@@ -1031,7 +1113,7 @@ export default function BookingPage() {
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Showtime</span>
-                    <span>{showing?.time ? formatTime(showing.time) : '—'}</span>
+                    <span>{formatShowtimeValue(showing)}</span>
                   </div>
                   <div className={styles.summaryRow}>
                     <span>Seats</span>
@@ -1062,56 +1144,6 @@ export default function BookingPage() {
       ) : !loading && !error ? (
         <p className={styles.noMovie}>No movie found.</p>
       ) : null}
-
-      {/* Age Selection Modal */}
-      {seatAgeModalOpen && (
-        <div className={styles.modal} onClick={() => setSeatAgeModalOpen(false)}>
-          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Select Ticket Type</h3>
-            <p className={styles.modalSubtitle}>for {formatSeatLabel(pendingSeatKey)}</p>
-            <div className={styles.ageOptions}>
-              <button
-                className={styles.ageButton}
-                onClick={() => handleSelectAgeForSeat('adult')}
-              >
-                <span className={styles.ageLabel}>Adult</span>
-                <span className={styles.agePrice}>${PRICES.adult}</span>
-              </button>
-              <button
-                className={styles.ageButton}
-                onClick={() => handleSelectAgeForSeat('child')}
-              >
-                <span className={styles.ageLabel}>Child</span>
-                <span className={styles.agePrice}>${PRICES.child}</span>
-              </button>
-              <button
-                className={styles.ageButton}
-                onClick={() => handleSelectAgeForSeat('senior')}
-              >
-                <span className={styles.ageLabel}>Senior</span>
-                <span className={styles.agePrice}>${PRICES.senior}</span>
-              </button>
-            </div>
-            <button
-              className={styles.cancelButton}
-              onClick={() => {
-                setSeatAgeModalOpen(false)
-                setPendingSeatKey(null)
-                // Remove the pending seat if it was added
-                setSelectedSeats((prev) => {
-                  const copy = { ...prev }
-                  if (copy[pendingSeatKey]) {
-                    delete copy[pendingSeatKey]
-                  }
-                  return copy
-                })
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       <LoginModal 
         isOpen={loginModalOpen} 

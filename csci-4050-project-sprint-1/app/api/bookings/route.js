@@ -1,59 +1,111 @@
 import dbConnect from '../../../database/db'
 import Booking from '../../../models/booking'
 import Movie from '../../../models/movie'
-//import { v4 as uuidv4 } from 'uuid'
+import Showing from '../../../models/showing'
 
 function generateConfirmationCode() {
   return `BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 }
 
+const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
+const TICKET_TYPES = ['adult', 'child', 'senior']
+
 // Validation helper functions
 function validateEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email.trim())
+  return emailRegex.test(String(email || '').trim())
 }
 
 function validateBookingData(body) {
   const errors = []
+  const seats = Array.isArray(body.seats) ? body.seats.map((seat) => String(seat)) : []
+  const uniqueSeats = new Set(seats)
 
-  // Validate movieId
   if (!body.movieId) {
     errors.push('Movie ID is required')
   }
 
-  // For initial bookings (just movieId, showingId, userId), skip other validations
-  if (body.showtime || body.seats || body.customerInfo) {
-    // This is a full booking validation
+  if (!body.userId) {
+    errors.push('User ID is required')
+  }
 
-    // Validate showtime
-    if (!body.showtime || typeof body.showtime !== 'string') {
-      errors.push('Showtime is required and must be valid')
+  if (!body.showingId) {
+    errors.push('Showing ID is required')
+  }
+
+  if (!body.showtime || typeof body.showtime !== 'string') {
+    errors.push('Showtime is required and must be valid')
+  }
+
+  if (seats.length === 0) {
+    errors.push('At least one seat must be selected')
+  } else if (uniqueSeats.size !== seats.length) {
+    errors.push('Duplicate seats are not allowed')
+  }
+
+  if (!body.seatSelections || typeof body.seatSelections !== 'object') {
+    errors.push('Seat selections are required')
+  }
+
+  if (!body.customerInfo) {
+    errors.push('Customer information is required')
+  } else {
+    const { name, email } = body.customerInfo
+    if (!name || name.trim().length < 2) {
+      errors.push('Customer name must be at least 2 characters')
+    }
+    if (!validateEmail(email)) {
+      errors.push('Valid email address is required')
+    }
+  }
+
+  if (!body.ticketTypes) {
+    errors.push('Ticket types are required')
+  } else {
+    const counts = TICKET_TYPES.map((type) => Number(body.ticketTypes[type] || 0))
+    const hasInvalidCount = counts.some((count) => !Number.isInteger(count) || count < 0)
+    const total = counts.reduce((sum, count) => sum + count, 0)
+
+    if (hasInvalidCount) {
+      errors.push('Ticket counts must be non-negative whole numbers')
     }
 
-    // Validate seats
-    if (!Array.isArray(body.seats) || body.seats.length === 0) {
-      errors.push('At least one seat must be selected')
+    if (total !== seats.length) {
+      errors.push('Total tickets must match number of seats')
     }
 
-    // Validate customer info
-    if (!body.customerInfo) {
-      errors.push('Customer information is required')
-    } else {
-      const { name, email } = body.customerInfo
-      if (!name || name.trim().length < 2) {
-        errors.push('Customer name must be at least 2 characters')
-      }
-      if (!validateEmail(email)) {
-        errors.push('Valid email address is required')
-      }
+    if (total === 0) {
+      errors.push('At least one ticket must be selected')
+    }
+  }
+
+  if (body.seatSelections && typeof body.seatSelections === 'object') {
+    const selectionEntries = Object.entries(body.seatSelections)
+    const selectedSeatCount = selectionEntries.length
+    const seatSet = new Set(seats)
+    const invalidSeatSelection = selectionEntries.some(
+      ([seat, type]) => !seatSet.has(String(seat)) || !TICKET_TYPES.includes(String(type))
+    )
+
+    if (selectedSeatCount !== seats.length) {
+      errors.push('Seat selections must match the selected seats')
     }
 
-    // Validate ticket types if provided
-    if (body.ticketTypes) {
-      const { adult, child, senior } = body.ticketTypes
-      const total = (adult || 0) + (child || 0) + (senior || 0)
-      if (total !== body.seats.length) {
-        errors.push('Total tickets must match number of seats')
+    if (invalidSeatSelection) {
+      errors.push('Seat selections must use selected seats and valid ticket types')
+    }
+
+    if (body.ticketTypes && !invalidSeatSelection) {
+      const selectionCounts = TICKET_TYPES.reduce((counts, type) => ({
+        ...counts,
+        [type]: selectionEntries.filter(([, selectedType]) => String(selectedType) === type).length,
+      }), {})
+      const mismatchedType = TICKET_TYPES.find(
+        (type) => selectionCounts[type] !== Number(body.ticketTypes[type] || 0)
+      )
+
+      if (mismatchedType) {
+        errors.push('Ticket age groups must match the selected seat assignments')
       }
     }
   }
@@ -63,25 +115,9 @@ function validateBookingData(body) {
 
 export async function POST(request) {
   try {
-    const conn = await dbConnect()
+    await dbConnect()
     const body = await request.json()
 
-    // Validate required fields
-    if (!body.movieId) {
-      return Response.json(
-        { error: 'Movie ID is required' },
-        { status: 400 }
-      )
-    }
-
-    if (!body.userId) {
-      return Response.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
-    }
-
-    // Validate all other fields
     const validationErrors = validateBookingData(body)
     if (validationErrors.length > 0) {
       return Response.json(
@@ -96,13 +132,17 @@ export async function POST(request) {
       showingId,
       showtime,
       seats,
-      numberOfTickets,
+      seatSelections,
       ticketTypes,
       customerInfo,
+      paymentMethod,
     } = body
 
-    // Verify movie exists
-    const movie = await Movie.findById(movieId)
+    const [movie, showing] = await Promise.all([
+      Movie.findById(movieId),
+      Showing.findById(showingId),
+    ])
+
     if (!movie) {
       return Response.json(
         { error: 'Movie not found' },
@@ -110,41 +150,53 @@ export async function POST(request) {
       )
     }
 
-    // Check if this is an initial booking (just movieId, showingId, userId)
-    const isInitialBooking = !showtime && !seats && !customerInfo
-
-    let booking
-    if (isInitialBooking) {
-      // Create a pending booking with minimal info
-      const tempReference = `TEMP-${generateConfirmationCode()}`
-      booking = await Booking.create({
-        userID: userId,
-        bookingDate: new Date(),
-        bookingFee: 0,
-        paymentReference: tempReference,
-        status: 'pending',
-        taxAmount: 0,
-        totalAmount: 0,
-        tickets: [],
-      })
-    } else {
-      // Create a full booking with all details
-      const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
-      const ticketCount = ticketTypes?.adult || seats.length
-      const totalPrice = ticketCount * TICKET_PRICES.adult
-
-      const confirmationCode = generateConfirmationCode()
-      booking = await Booking.create({
-        userID: userId,
-        bookingDate: new Date(),
-        bookingFee: 0,
-        paymentReference: confirmationCode,
-        status: 'pending',
-        taxAmount: 0,
-        totalAmount: totalPrice,
-        tickets: [],
-      })
+    if (!showing) {
+      return Response.json(
+        { error: 'Showing not found' },
+        { status: 404 }
+      )
     }
+
+    const normalizedTicketTypes = {
+      adult: Number(ticketTypes?.adult || 0),
+      child: Number(ticketTypes?.child || 0),
+      senior: Number(ticketTypes?.senior || 0),
+    }
+
+    const totalPrice =
+      (normalizedTicketTypes.adult * TICKET_PRICES.adult) +
+      (normalizedTicketTypes.child * TICKET_PRICES.child) +
+      (normalizedTicketTypes.senior * TICKET_PRICES.senior)
+
+    const confirmationCode = generateConfirmationCode()
+    const booking = await Booking.create({
+      userID: userId,
+      movieId,
+      showingId,
+      bookingDate: new Date(),
+      bookingFee: 0,
+      paymentReference: `TEMP-${confirmationCode}`,
+      status: 'pending',
+      taxAmount: 0,
+      totalAmount: totalPrice,
+      showtime,
+      seats: seats.map((seat) => String(seat)),
+      seatSelections: Object.fromEntries(
+        Object.entries(seatSelections || {}).map(([seat, type]) => [String(seat), String(type)])
+      ),
+      ticketTypes: normalizedTicketTypes,
+      customerInfo: {
+        name: String(customerInfo.name || '').trim(),
+        email: String(customerInfo.email || '').trim(),
+        address: String(customerInfo.address || '').trim(),
+      },
+      confirmationCode,
+      paymentInfo: {
+        method: paymentMethod || 'card',
+        status: 'pending',
+      },
+      tickets: [],
+    })
 
     return Response.json(
       {
@@ -153,9 +205,10 @@ export async function POST(request) {
           _id: booking._id,
           confirmationCode: booking.confirmationCode,
           movieId: booking.movieId,
+          showingId: booking.showingId,
           showtime: booking.showtime,
           seats: booking.seats,
-          totalPrice: booking.totalPrice,
+          totalPrice: booking.totalAmount,
           customerEmail: booking.customerInfo?.email,
           status: booking.status,
         },
@@ -192,7 +245,9 @@ export async function GET(request) {
     }
 
     if (userId) {
-      const booking = await Booking.find({ userId }).populate('movieId')
+      const booking = await Booking.find({ userID: userId })
+        .populate('movieId')
+        .populate('showingId')
       return Response.json({ bookings: booking }, { status: 200 })
     }
 

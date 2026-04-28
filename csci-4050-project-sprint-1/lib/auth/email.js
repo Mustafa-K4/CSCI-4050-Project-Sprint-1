@@ -62,7 +62,6 @@ async function sendEmail({ to, subject, plainMessage, htmlMessage, logPrefix }) 
     throw error
   }
 
-  console.log(`[${logPrefix}] delivered to=${to} provider=sendgrid`)
   return { delivered: true, provider: 'sendgrid' }
 }
 
