@@ -370,6 +370,30 @@
   gap: 18px;
 }
 
+.recommendationGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.recommendationItem {
+  display: grid;
+  gap: 10px;
+}
+
+.recommendationReason {
+  min-height: 58px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(234, 223, 206, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 250, 242, 0.72);
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .stateCard {
   padding: 24px;
   border: 1px solid rgba(234, 223, 206, 0.9);
@@ -459,6 +483,11 @@
   }
 
   .movieGrid {
+    grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+    gap: 12px;
+  }
+
+  .recommendationGrid {
     grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
     gap: 12px;
   }

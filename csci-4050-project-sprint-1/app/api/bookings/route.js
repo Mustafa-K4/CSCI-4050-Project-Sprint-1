@@ -2,12 +2,13 @@ import dbConnect from '../../../database/db'
 import Booking from '../../../models/booking'
 import Movie from '../../../models/movie'
 import Showing from '../../../models/showing'
+import { getSessionUser } from '../../../lib/auth/current-user'
+import { TICKET_PRICES } from '../../../lib/booking/ticketFactory'
 
 function generateConfirmationCode() {
   return `BK-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 }
 
-const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
 const TICKET_TYPES = ['adult', 'child', 'senior']
 
 // Validation helper functions
@@ -43,7 +44,7 @@ function validateBookingData(body) {
     errors.push('Duplicate seats are not allowed')
   }
 
-  if (!body.seatSelections || typeof body.seatSelections !== 'object') {
+  if (!body.seatSelections || typeof body.seatSelections !== 'object' || Array.isArray(body.seatSelections)) {
     errors.push('Seat selections are required')
   }
 
@@ -138,6 +139,22 @@ export async function POST(request) {
       paymentMethod,
     } = body
 
+    const sessionUser = await getSessionUser()
+    if (!sessionUser) {
+      return Response.json(
+        { error: 'You must be logged in to complete checkout.' },
+        { status: 401 }
+      )
+    }
+
+    const isOwner = sessionUser._id?.toString() === userId
+    if (!isOwner && sessionUser.role !== 'admin') {
+      return Response.json(
+        { error: 'Forbidden.' },
+        { status: 403 }
+      )
+    }
+
     const [movie, showing] = await Promise.all([
       Movie.findById(movieId),
       Showing.findById(showingId),
@@ -228,10 +245,10 @@ export async function GET(request) {
   try {
     await dbConnect()
 
-    // Get query parameters
     const { searchParams } = new URL(request.url)
     const bookingId = searchParams.get('id')
     const userId = searchParams.get('userId')
+    const status = searchParams.get('status')
 
     if (bookingId) {
       const booking = await Booking.findById(bookingId).populate('movieId')
@@ -241,13 +258,46 @@ export async function GET(request) {
           { status: 404 }
         )
       }
+
+      const sessionUser = await getSessionUser()
+      const isOwner = sessionUser?._id?.toString() === booking.userID?.toString()
+      if (!sessionUser || (!isOwner && sessionUser.role !== 'admin')) {
+        return Response.json(
+          { error: 'Forbidden.' },
+          { status: 403 }
+        )
+      }
+
       return Response.json({ booking }, { status: 200 })
     }
 
     if (userId) {
-      const booking = await Booking.find({ userID: userId })
+      const sessionUser = await getSessionUser()
+      if (!sessionUser) {
+        return Response.json(
+          { error: 'You must be logged in to view order history.' },
+          { status: 401 }
+        )
+      }
+
+      const isOwner = sessionUser._id?.toString() === userId
+      if (!isOwner && sessionUser.role !== 'admin') {
+        return Response.json(
+          { error: 'Forbidden.' },
+          { status: 403 }
+        )
+      }
+
+      const query = { userID: userId }
+
+      if (status) {
+        query.status = status
+      }
+
+      const booking = await Booking.find(query)
         .populate('movieId')
         .populate('showingId')
+        .sort({ createdAt: -1, bookingDate: -1 })
       return Response.json({ bookings: booking }, { status: 200 })
     }
 

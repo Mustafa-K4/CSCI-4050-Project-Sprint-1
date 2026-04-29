@@ -303,6 +303,92 @@
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
+.orderGrid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.orderCard {
+  border: 1px solid #dbe3f3;
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.orderHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.orderEyebrow {
+  margin: 0 0 4px;
+  color: #52667a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.orderCode {
+  margin: 0;
+  color: #102a43;
+  font-size: 1.08rem;
+}
+
+.orderStatus {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e8f5e9;
+  color: #1b5e20;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.orderDetails {
+  display: grid;
+  gap: 10px;
+}
+
+.orderDetails p {
+  margin: 0;
+  color: #102a43;
+  line-height: 1.45;
+}
+
+.orderDetails span {
+  display: block;
+  margin-bottom: 2px;
+  color: #52667a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.orderTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #dbe3f3;
+  color: #102a43;
+}
+
+.orderTotal span {
+  color: #52667a;
+  font-weight: 700;
+}
+
+.orderTotal strong {
+  font-size: 1.15rem;
+}
+
 .favoriteCard {
   border: 1px solid #dbe3f3;
   border-radius: 14px;

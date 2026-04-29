@@ -4,9 +4,15 @@ import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import LoginModal from '../../../components/auth/LoginModal'
+import { TICKET_PRICES as PRICES } from '../../../lib/booking/ticketFactory'
+import {
+  normalizeCardNumberInput,
+  normalizeCvvInput,
+  normalizeExpirationInput,
+  validatePaymentCard,
+} from '../../../lib/security/payment-card'
 import styles from './page.module.css'
 
-const PRICES = { adult: 12, child: 8, senior: 10 }
 const STEP_SELECT = 'select'
 const STEP_DETAILS = 'details'
 const STEP_CHECKOUT = 'checkout'
@@ -302,6 +308,12 @@ export default function BookingPage() {
   const selectedTicketCount = selectedAdult + selectedChild + selectedSenior
   const requestedTicketCount =
     requestedTickets.adult + requestedTickets.child + requestedTickets.senior
+  const selectedSavedCard = paymentChoice.startsWith('saved-')
+    ? savedCards[Number(paymentChoice.replace('saved-', ''))]
+    : null
+  const paymentLastFour = paymentChoice === 'new'
+    ? manualCard.cardNumber.replace(/\D/g, '').slice(-4)
+    : String(selectedSavedCard?.cardNumber || '').replace(/\D/g, '').slice(-4)
   const subtotal =
     (requestedTickets.adult * PRICES.adult) +
     (requestedTickets.child * PRICES.child) +
@@ -408,9 +420,17 @@ export default function BookingPage() {
 
   function updateManualCard(field, value) {
     setCheckoutError('')
+    const nextValue = field === 'cardNumber'
+      ? normalizeCardNumberInput(value)
+      : field === 'expirationDate'
+        ? normalizeExpirationInput(value)
+        : field === 'cvv'
+          ? normalizeCvvInput(value)
+          : value
+
     setManualCard((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: nextValue,
     }))
   }
 
@@ -499,11 +519,8 @@ export default function BookingPage() {
       if (!manualCard.cvv || !manualCard.cvv.trim()) {
         return '⚠️ CVV is required'
       }
-      // Basic card validation
-      const cardDigits = manualCard.cardNumber.replace(/\D/g, '')
-      if (cardDigits.length < 13 || cardDigits.length > 19) {
-        return '⚠️ Card Number must be between 13-19 digits'
-      }
+      const cardError = validatePaymentCard(manualCard, { requireCardholderName: true })
+      if (cardError) return `⚠️ ${cardError}`
     } else if (paymentChoice.startsWith('saved-')) {
       const cardIndex = Number(paymentChoice.replace('saved-', ''))
       if (isNaN(cardIndex) || !savedCards[cardIndex]) {
@@ -941,6 +958,7 @@ export default function BookingPage() {
                           onChange={(event) => updateManualCard('cardholderName', event.target.value)}
                           placeholder="Name on Card"
                           aria-label="Cardholder Name (required)"
+                          maxLength={80}
                           required
                         />
                       </label>
@@ -952,7 +970,9 @@ export default function BookingPage() {
                           value={manualCard.cardNumber}
                           onChange={(event) => updateManualCard('cardNumber', event.target.value)}
                           placeholder="1234 5678 9012 3456"
-                          aria-label="Card Number (required, 13-19 digits)"
+                          aria-label="Card Number (required, exactly 16 digits)"
+                          inputMode="numeric"
+                          maxLength={19}
                           required
                         />
                       </label>
@@ -966,6 +986,8 @@ export default function BookingPage() {
                             onChange={(event) => updateManualCard('expirationDate', event.target.value)}
                             placeholder="MM/YY"
                             aria-label="Expiration Date in MM/YY format (required)"
+                            inputMode="numeric"
+                            maxLength={5}
                             required
                           />
                         </label>
@@ -978,6 +1000,8 @@ export default function BookingPage() {
                             onChange={(event) => updateManualCard('cvv', event.target.value)}
                             placeholder="123"
                             aria-label="CVV (3-4 digits, required)"
+                            inputMode="numeric"
+                            maxLength={4}
                             required
                           />
                         </label>
@@ -1043,7 +1067,7 @@ export default function BookingPage() {
                       </div>
                       <div className={styles.detailRow}>
                         <span>Card Type:</span>
-                        <span>Visa •••• {manualCard.cardNumber.slice(-4) || (paymentChoice.startsWith('saved-') ? '****' : 'N/A')}</span>
+                        <span>Visa •••• {paymentLastFour || 'N/A'}</span>
                       </div>
                       <div className={styles.detailRow}>
                         <span>Amount:</span>

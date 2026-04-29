@@ -3,6 +3,7 @@ import User from '../../../models/user'
 import { getSessionUser, toSafeUser } from '../../../lib/auth/current-user'
 import { hashPassword, validatePasswordStrength } from '../../../lib/auth/passwords'
 import { encryptPaymentData } from '../../../lib/security/encryption'
+import { normalizePaymentCard, validatePaymentCard } from '../../../lib/security/payment-card'
 
 function buildName(body) {
   const firstName = (body.firstName || '').toString().trim()
@@ -142,10 +143,29 @@ export async function POST(request) {
     }
 
     const hashedPassword = await hashPassword(password)
-    const incomingPayments = Array.isArray(body.payments) ? body.payments : []
+    const incomingPayments = Array.isArray(body.payments) ? body.payments.map(normalizePaymentCard) : []
     if (incomingPayments.length > 3) {
       return Response.json(
         { error: 'A user can store a maximum of 3 payment cards.' },
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+    }
+
+    const invalidPayment = incomingPayments
+      .map((payment, index) => ({
+        index,
+        error: validatePaymentCard(payment),
+      }))
+      .find((result) => result.error)
+
+    if (invalidPayment) {
+      return Response.json(
+        { error: `Payment card ${invalidPayment.index + 1}: ${invalidPayment.error}` },
         {
           status: 400,
           headers: {
