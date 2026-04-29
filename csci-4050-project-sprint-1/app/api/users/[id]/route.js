@@ -6,22 +6,21 @@ import { getSessionUser, toSafeUser } from '../../../../lib/auth/current-user'
 import { sendProfileChangeEmail } from '../../../../lib/auth/email'
 import { verifyPassword } from '../../../../lib/auth/passwords'
 import { decryptPaymentData, encryptPaymentData } from '../../../../lib/security/encryption'
+import {
+  isEmptyPaymentCard,
+  normalizePaymentCard,
+  validatePaymentCard,
+} from '../../../../lib/security/payment-card'
 
 function normalizeAddress(address) {
   const value = typeof address === 'string' ? address.trim() : ''
   return value ? [value] : []
 }
 
-function normalizePaymentCard(card) {
-  return {
-    cardNumber: String(card?.cardNumber || '').trim(),
-    expirationDate: String(card?.expirationDate || '').trim(),
-    cvv: String(card?.cvv || '').trim(),
-  }
-}
-
-function isEmptyPaymentCard(card) {
-  return !card.cardNumber && !card.expirationDate && !card.cvv
+function createValidationError(message) {
+  const error = new Error(message)
+  error.statusCode = 400
+  return error
 }
 
 function normalizeIncomingCards(cards) {
@@ -33,16 +32,19 @@ function normalizeIncomingCards(cards) {
     .map(normalizePaymentCard)
     .filter((card) => !isEmptyPaymentCard(card))
 
-  const hasIncompleteCard = normalizedCards.some(
-    (card) => !card.cardNumber || !card.expirationDate || !card.cvv
-  )
-
-  if (hasIncompleteCard) {
-    throw new Error('Each payment card must include card number, expiration date, and CVV.')
+  if (normalizedCards.length > 3) {
+    throw createValidationError('You can store a maximum of 3 payment cards.')
   }
 
-  if (normalizedCards.length > 3) {
-    throw new Error('You can store a maximum of 3 payment cards.')
+  const invalidCard = normalizedCards
+    .map((card, index) => ({
+      index,
+      error: validatePaymentCard(card),
+    }))
+    .find((result) => result.error)
+
+  if (invalidCard) {
+    throw createValidationError(`Card ${invalidCard.index + 1}: ${invalidCard.error}`)
   }
 
   return normalizedCards
@@ -247,7 +249,7 @@ export async function PUT(request, { params }) {
     console.error('User profile PUT error:', error)
     return NextResponse.json(
       { error: error.message || 'Unable to update user profile.' },
-      { status: 500 }
+      { status: error.statusCode || 500 }
     )
   }
 }

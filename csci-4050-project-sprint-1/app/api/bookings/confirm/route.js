@@ -2,8 +2,8 @@ import dbConnect from '../../../../database/db'
 import Booking from '../../../../models/booking'
 import Ticket from '../../../../models/ticket'
 import { sendBookingConfirmationEmail } from '../../../../lib/auth/email'
-
-const TICKET_PRICES = { adult: 12, child: 8, senior: 10 }
+import { createTicketEntriesFromBooking } from '../../../../lib/booking/ticketFactory'
+import { getSessionUser } from '../../../../lib/auth/current-user'
 
 function formatSeatLabel(seat) {
   const match = String(seat || '').match(/^(\d+)-(\d+)$/)
@@ -32,6 +32,24 @@ export async function POST(request) {
       return Response.json(
         { error: 'Booking not found' },
         { status: 404 }
+      )
+    }
+
+    const sessionUser = await getSessionUser()
+    if (!sessionUser) {
+      return Response.json(
+        { error: 'You must be logged in to confirm checkout.' },
+        { status: 401 }
+      )
+    }
+
+    const bookingOwnerId = booking.userID?.toString()
+    const submittedUserId = userId ? String(userId) : bookingOwnerId
+    const isOwner = sessionUser._id?.toString() === bookingOwnerId && bookingOwnerId === submittedUserId
+    if (!isOwner && sessionUser.role !== 'admin') {
+      return Response.json(
+        { error: 'Forbidden.' },
+        { status: 403 }
       )
     }
 
@@ -73,31 +91,10 @@ export async function POST(request) {
       )
     }
 
-    const seatSelections =
-      booking.seatSelections instanceof Map
-        ? Object.fromEntries(booking.seatSelections)
-        : booking.seatSelections || {}
-
-    const ticketEntries = (booking.seats || []).map((seat) => {
-      const ticketType = seatSelections[seat] || 'adult'
-      const price = TICKET_PRICES[ticketType] || TICKET_PRICES.adult
-
-      return {
-        booking: booking._id,
-        showing: booking.showingId,
-        seat,
-        ticketType,
-        basePrice: price,
-        price,
-      }
-    })
-
+    const ticketEntries = createTicketEntriesFromBooking(booking)
     const createdTickets = ticketEntries.length > 0 ? await Ticket.insertMany(ticketEntries) : []
 
     booking.status = 'confirmed'
-    if (userId) {
-      booking.userID = userId
-    }
     booking.tickets = createdTickets.map((ticket) => ticket._id)
 
     if (!booking.paymentInfo) {
@@ -115,12 +112,12 @@ export async function POST(request) {
         await sendBookingConfirmationEmail({
           to: booking.customerInfo.email,
           bookingDetails: {
-          movieTitle: booking.movieId?.title || 'Movie',
-          showtime: booking.showtime,
-          seats: (booking.seats || []).map((seat) => formatSeatLabel(seat)),
-          confirmationCode: booking.confirmationCode,
-          totalPrice: booking.totalAmount,
-          customerName: booking.customerInfo.name,
+            movieTitle: booking.movieId?.title || 'Movie',
+            showtime: booking.showtime,
+            seats: (booking.seats || []).map((seat) => formatSeatLabel(seat)),
+            confirmationCode: booking.confirmationCode,
+            totalPrice: booking.totalAmount,
+            customerName: booking.customerInfo.name,
           },
         })
       }

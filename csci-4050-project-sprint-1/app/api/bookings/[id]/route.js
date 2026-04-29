@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import dbConnect from '../../../../database/db'
 import Booking from '../../../../models/booking'
 import Ticket from '../../../../models/ticket'
+import { getSessionUser } from '../../../../lib/auth/current-user'
 
 export async function PUT(request, { params }) {
   try {
@@ -10,7 +11,6 @@ export async function PUT(request, { params }) {
 
     await dbConnect()
 
-    // Validate bookingId
     if (!mongoose.Types.ObjectId.isValid(bookingId)) {
       return Response.json(
         { error: 'Invalid booking ID format' },
@@ -18,7 +18,6 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Find existing booking
     const booking = await Booking.findById(bookingId)
     if (!booking) {
       return Response.json(
@@ -27,8 +26,16 @@ export async function PUT(request, { params }) {
       )
     }
 
-    // Handle ticket updates
-    const { ticketId, action } = body // action: "add" or "remove"
+    const sessionUser = await getSessionUser()
+    const isOwner = sessionUser?._id?.toString() === booking.userID?.toString()
+    if (!sessionUser || (!isOwner && sessionUser.role !== 'admin')) {
+      return Response.json(
+        { error: 'Forbidden.' },
+        { status: 403 }
+      )
+    }
+
+    const { ticketId, action } = body
 
     if (action === 'add' && ticketId) {
       if (!mongoose.Types.ObjectId.isValid(ticketId)) {
@@ -38,7 +45,6 @@ export async function PUT(request, { params }) {
         )
       }
 
-      // Add ticket ID if not already in list
       if (!booking.tickets.includes(ticketId)) {
         booking.tickets.push(ticketId)
       }
@@ -50,16 +56,11 @@ export async function PUT(request, { params }) {
         )
       }
 
-      // Remove ticket ID from list
       booking.tickets = booking.tickets.filter(id => !id.equals(ticketId))
-
-      // Delete the ticket document
       await Ticket.findByIdAndDelete(ticketId)
     } else if (body.tickets !== undefined) {
-      // Full replacement mode (for clearing)
       const existingTickets = booking.tickets || []
       if (Array.isArray(body.tickets) && body.tickets.length === 0 && existingTickets.length > 0) {
-        // Delete all existing tickets
         await Ticket.deleteMany({ _id: { $in: existingTickets } })
       }
       booking.tickets = body.tickets || []

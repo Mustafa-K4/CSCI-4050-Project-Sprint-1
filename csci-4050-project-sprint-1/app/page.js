@@ -16,6 +16,8 @@ export default function HomePage() {
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
 
   const [query, setQuery] = useState('');
   const [genre, setGenre] = useState('All');
@@ -66,6 +68,32 @@ export default function HomePage() {
     return () => ctl.abort();
   }, []);
 
+  useEffect(() => {
+    if (loading || authLoading || movies.length === 0) return;
+
+    const ctl = new AbortController();
+    const userId = currentUser?.id || currentUser?._id || currentUser?.userId || '';
+    const queryString = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+
+    setRecommendationsLoading(true);
+
+    fetch(`/api/recommendations${queryString}`, { signal: ctl.signal })
+      .then(res => {
+        if (!res.ok) throw new Error(`Recommendation error: ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        const incoming = Array.isArray(data?.recommendations) ? data.recommendations : [];
+        setRecommendations(incoming);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') setRecommendations([]);
+      })
+      .finally(() => setRecommendationsLoading(false));
+
+    return () => ctl.abort();
+  }, [loading, authLoading, movies.length, currentUser]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const source = externalSearchResults !== null ? externalSearchResults : movies;
@@ -99,6 +127,12 @@ export default function HomePage() {
   const showingCount = movies.filter(m => (m.status || '').toLowerCase().includes('run')).length;
   const upcomingCount = movies.filter(m => (m.status || '').toLowerCase().includes('coming')).length;
   const activeFilterCount = query.trim() || genre !== 'All' ? filtered.length : movies.length;
+  const recommendationItems = recommendations
+    .map(item => ({
+      movie: item?.movie,
+      reason: item?.reason || 'Recommended based on current movie activity.',
+    }))
+    .filter(item => item.movie?._id);
 
   async function handleLogout() {
     try {
@@ -235,6 +269,31 @@ export default function HomePage() {
 
           {!loading && !error && anyMovies && (
             <>
+              {recommendationsLoading || recommendationItems.length > 0 ? (
+                <section className={styles.section}>
+                  <div className={styles.sectionHeader}>
+                    <div>
+                      <p className={styles.panelLabel}>AI-assisted picks</p>
+                      <h2>Recommended For You</h2>
+                    </div>
+                    <span>{recommendationsLoading ? 'Loading' : `${recommendationItems.length} picks`}</span>
+                  </div>
+
+                  {recommendationsLoading ? (
+                    <div className={styles.stateCard}>Loading recommendations...</div>
+                  ) : (
+                    <div className={styles.recommendationGrid}>
+                      {recommendationItems.map(({ movie, reason }) => (
+                        <div key={`recommendation-${movie._id}`} className={styles.recommendationItem}>
+                          <MovieCard movie={movie} />
+                          <p className={styles.recommendationReason}>{reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ) : null}
+
               {currentlyRunning.length > 0 && (
                 <section className={styles.section}>
                   <div className={styles.sectionHeader}>

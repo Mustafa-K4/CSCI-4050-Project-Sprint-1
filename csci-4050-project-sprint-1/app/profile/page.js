@@ -3,6 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import LogoutButton from '../../components/LogoutButton'
+import {
+  normalizeCardNumberInput,
+  normalizeCvvInput,
+  normalizeExpirationInput,
+} from '../../lib/security/payment-card'
 import styles from './page.module.css'
 
 function getStoredUser() {
@@ -50,6 +55,51 @@ function getFavoriteSubtitle(item) {
   return item.genre || item.year || item.release_date || item.rating || 'Saved movie'
 }
 
+function formatSeatLabel(seat) {
+  const match = String(seat || '').match(/^(\d+)-(\d+)$/)
+  if (!match) return String(seat || '')
+
+  const rowIndex = Number(match[1])
+  const colIndex = Number(match[2])
+  return `${String.fromCharCode(65 + rowIndex)}${colIndex + 1}`
+}
+
+function formatShowtime(value) {
+  if (!value) return 'Showtime unavailable'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+
+  return date.toLocaleString([], {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function getOrderMovieTitle(order) {
+  return order?.movieId?.title || order?.movieTitle || 'Movie'
+}
+
+function formatTicketBreakdown(ticketTypes) {
+  const types = [
+    ['adult', 'Adult'],
+    ['child', 'Child'],
+    ['senior', 'Senior'],
+  ]
+
+  const labels = types
+    .map(([key, label]) => {
+      const count = Number(ticketTypes?.[key] || 0)
+      return count > 0 ? `${count} ${label}` : ''
+    })
+    .filter(Boolean)
+
+  return labels.length > 0 ? labels.join(', ') : 'No ticket details'
+}
+
 export default function ProfilePage() {
   const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -64,6 +114,8 @@ export default function ProfilePage() {
   })
   const [cards, setCards] = useState([])
   const [favoriteMovies, setFavoriteMovies] = useState([])
+  const [orderHistory, setOrderHistory] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
 
   useEffect(() => {
     async function loadUser() {
@@ -135,10 +187,21 @@ export default function ProfilePage() {
             : []
 
         setFavoriteMovies(favoriteItems)
+
+        setOrdersLoading(true)
+        const ordersResponse = await fetch(`/api/bookings?userId=${id}&status=confirmed`)
+        const ordersData = await ordersResponse.json()
+
+        if (ordersResponse.ok) {
+          setOrderHistory(Array.isArray(ordersData.bookings) ? ordersData.bookings : [])
+        } else {
+          setOrderHistory([])
+        }
       } catch (requestError) {
         setError(requestError.message || 'We could not load your profile right now. Please try again.')
       } finally {
         setLoading(false)
+        setOrdersLoading(false)
       }
     }
 
@@ -169,12 +232,20 @@ export default function ProfilePage() {
   function updatePaymentCard(index, field, value) {
     setError('')
     setSuccess('')
+    const nextValue = field === 'cardNumber'
+      ? normalizeCardNumberInput(value)
+      : field === 'expirationDate'
+        ? normalizeExpirationInput(value)
+        : field === 'cvv'
+          ? normalizeCvvInput(value)
+          : value
+
     setCards(prev =>
       prev.map((card, currentIndex) =>
         currentIndex === index
           ? {
               ...card,
-              [field]: value,
+              [field]: nextValue,
             }
           : card,
       ),
@@ -401,6 +472,8 @@ export default function ProfilePage() {
                       value={card.cardNumber || ''}
                       onChange={event => updatePaymentCard(index, 'cardNumber', event.target.value)}
                       placeholder="1234 5678 9012 3456"
+                      inputMode="numeric"
+                      maxLength={19}
                     />
                   </label>
 
@@ -415,6 +488,8 @@ export default function ProfilePage() {
                         value={card.expirationDate || ''}
                         onChange={event => updatePaymentCard(index, 'expirationDate', event.target.value)}
                         placeholder="MM/YY"
+                        inputMode="numeric"
+                        maxLength={5}
                       />
                     </label>
 
@@ -428,6 +503,8 @@ export default function ProfilePage() {
                         value={card.cvv || ''}
                         onChange={event => updatePaymentCard(index, 'cvv', event.target.value)}
                         placeholder="123"
+                        inputMode="numeric"
+                        maxLength={4}
                       />
                     </label>
                   </div>
@@ -446,6 +523,59 @@ export default function ProfilePage() {
             >
               Add Card
             </button>
+          </section>
+
+          <section className={`${styles.section} ${styles.fullWidth}`}>
+            <div className={styles.sectionHeading}>
+              <h2 className={styles.sectionTitle}>Order History</h2>
+              <span className={styles.sectionMeta}>{orderHistory.length} confirmed</span>
+            </div>
+
+            {ordersLoading ? (
+              <p className={styles.emptyText}>Loading order history...</p>
+            ) : orderHistory.length === 0 ? (
+              <p className={styles.emptyText}>No confirmed bookings yet.</p>
+            ) : (
+              <div className={styles.orderGrid}>
+                {orderHistory.map((order) => (
+                  <article key={order._id || order.confirmationCode} className={styles.orderCard}>
+                    <div className={styles.orderHeader}>
+                      <div>
+                        <p className={styles.orderEyebrow}>Confirmation</p>
+                        <h3 className={styles.orderCode}>{order.confirmationCode || 'Pending code'}</h3>
+                      </div>
+                      <span className={styles.orderStatus}>{order.status || 'confirmed'}</span>
+                    </div>
+
+                    <div className={styles.orderDetails}>
+                      <p>
+                        <span>Movie</span>
+                        {getOrderMovieTitle(order)}
+                      </p>
+                      <p>
+                        <span>Showtime</span>
+                        {formatShowtime(order.showtime)}
+                      </p>
+                      <p>
+                        <span>Seats</span>
+                        {Array.isArray(order.seats) && order.seats.length > 0
+                          ? order.seats.map(formatSeatLabel).join(', ')
+                          : 'No seats listed'}
+                      </p>
+                      <p>
+                        <span>Tickets</span>
+                        {formatTicketBreakdown(order.ticketTypes)}
+                      </p>
+                    </div>
+
+                    <div className={styles.orderTotal}>
+                      <span>Total Paid</span>
+                      <strong>${Number(order.totalAmount || 0).toFixed(2)}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className={`${styles.section} ${styles.fullWidth}`}>
