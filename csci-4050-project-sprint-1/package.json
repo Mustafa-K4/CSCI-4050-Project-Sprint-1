@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@google/genai": "^1.51.0",
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^6.0.0",
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.1",

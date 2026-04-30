@@ -38,6 +38,7 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
 
       - name: Run tests
         run: npm test
@@ -45,3 +46,4 @@ jobs:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_KEY }}
