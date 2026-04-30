@@ -2,7 +2,7 @@ import mongoose from 'mongoose'
 import dbConnect from '../../../database/db'
 import Booking from '../../../models/booking'
 import Ticket from '../../../models/ticket'
-import Booking from '../../../models/booking'
+
 
 void Booking
 

@@ -85,9 +85,17 @@ export default function HomePage() {
       .then(data => {
         const incoming = Array.isArray(data?.recommendations) ? data.recommendations : [];
         setRecommendations(incoming);
+        if (data?.source === 'ai') {
+          console.log('✓ AI Recommendations loaded successfully', { count: incoming.length, source: data.source });
+        } else if (data?.source === 'local') {
+          console.log('⚠ Using fallback recommendations (AI service unavailable)', { count: incoming.length, source: data.source });
+        }
       })
       .catch(err => {
-        if (err.name !== 'AbortError') setRecommendations([]);
+        if (err.name !== 'AbortError') {
+          console.error('✗ Failed to load recommendations:', err.message);
+          setRecommendations([]);
+        }
       })
       .finally(() => setRecommendationsLoading(false));
 

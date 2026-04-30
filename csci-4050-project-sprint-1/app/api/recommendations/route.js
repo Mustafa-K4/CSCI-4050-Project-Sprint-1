@@ -3,7 +3,7 @@ import Booking from '../../../models/booking'
 import Movie from '../../../models/movie'
 import User from '../../../models/user'
 import { getSessionUser } from '../../../lib/auth/current-user'
-import { getOpenAiRecommendations } from '../../../lib/recommendations/openAiRecommendationAdapter'
+import { getGeminiRecommendations } from '../../../lib/recommendations/geminiRecommendationAdapter'
 
 const MAX_RECOMMENDATIONS = 4
 
@@ -109,10 +109,10 @@ function buildFallbackRecommendations(movies, tasteProfile) {
     .map(({ movie, reason }) => ({ movie, reason }))
 }
 
-async function buildAiRecommendations(movies, tasteProfile) {
-  const aiItems = await getOpenAiRecommendations({
+async function buildAiRecommendations(movies, userFavorites) {
+  const aiItems = await getGeminiRecommendations({
     movies,
-    tasteProfile,
+    userFavorites,
     getMovieGenres,
   })
   const movieMap = new Map(movies.map((movie) => [movie._id, movie]))
@@ -124,7 +124,7 @@ async function buildAiRecommendations(movies, tasteProfile) {
 
       return {
         movie,
-        reason: String(item.reason || 'Recommended based on your movie activity.'),
+        reason: String(item.reason || 'Recommended based on your preferences.'),
       }
     })
     .filter(Boolean)
@@ -153,20 +153,33 @@ export async function GET(request) {
     const movies = (await Movie.find({}).lean()).map(normalizeMovie)
     const tasteProfile = await buildTasteProfile(userId)
 
+    // Get user's favorite movies for Gemini context
+    const user = userId ? await User.findById(userId).lean().catch(() => null) : null
+    const userFavorites = Array.isArray(user?.favorites) ? user.favorites : []
+
     let recommendations = []
     let source = 'local'
 
     try {
-      recommendations = await buildAiRecommendations(movies, tasteProfile)
+      recommendations = await buildAiRecommendations(movies, userFavorites)
       if (recommendations.length > 0) {
         source = 'ai'
+        console.log(`✓ Gemini AI Recommendations: Generated ${recommendations.length} recommendations for user ${userId || 'anonymous'}`)
+      } else {
+        console.warn(`⚠ Gemini AI returned empty recommendations, falling back to local algorithm for user ${userId || 'anonymous'}`)
       }
     } catch (error) {
-      console.error('AI recommendation fallback:', error.message)
+      console.error(`✗ Gemini AI Recommendation Error for user ${userId || 'anonymous'}:`, {
+        message: error.message,
+        stack: error.stack,
+        apiKeyConfigured: !!process.env.GEMINI_API_KEY,
+        timestamp: new Date().toISOString()
+      })
     }
 
     if (recommendations.length === 0) {
       recommendations = buildFallbackRecommendations(movies, tasteProfile)
+      console.log(`Using fallback recommendations: Generated ${recommendations.length} recommendations using local algorithm for user ${userId || 'anonymous'}`)
     }
 
     return Response.json({ recommendations, source }, { status: 200 })
