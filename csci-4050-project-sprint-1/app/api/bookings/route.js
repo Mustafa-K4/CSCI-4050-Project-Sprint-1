@@ -1,6 +1,7 @@
 import dbConnect from '../../../database/db'
 import Booking from '../../../models/booking'
 import Movie from '../../../models/movie'
+import Promotion from '../../../models/promotion'
 import Showing from '../../../models/showing'
 import { getSessionUser } from '../../../lib/auth/current-user'
 import { TICKET_PRICES } from '../../../lib/booking/ticketFactory'
@@ -111,6 +112,10 @@ function validateBookingData(body) {
     }
   }
 
+  if (body.promotionCode && !/^[A-Z0-9_-]{3,24}$/i.test(String(body.promotionCode).trim())) {
+    errors.push('Promotion code must be 3-24 characters using letters, numbers, dashes, or underscores')
+  }
+
   return errors
 }
 
@@ -137,6 +142,7 @@ export async function POST(request) {
       ticketTypes,
       customerInfo,
       paymentMethod,
+      promotionCode,
     } = body
 
     const sessionUser = await getSessionUser()
@@ -180,10 +186,39 @@ export async function POST(request) {
       senior: Number(ticketTypes?.senior || 0),
     }
 
-    const totalPrice =
+    const subtotalPrice =
       (normalizedTicketTypes.adult * TICKET_PRICES.adult) +
       (normalizedTicketTypes.child * TICKET_PRICES.child) +
       (normalizedTicketTypes.senior * TICKET_PRICES.senior)
+
+    let appliedPromotionCode = ''
+    let discountAmount = 0
+    const normalizedPromotionCode = String(promotionCode || '').trim().toUpperCase()
+
+    if (normalizedPromotionCode) {
+      const promotion = await Promotion.findOne({ promoCode: normalizedPromotionCode })
+      if (!promotion) {
+        return Response.json(
+          { error: 'Promotion code was not found.' },
+          { status: 400 }
+        )
+      }
+
+      const expirationDate = new Date(promotion.expirationDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (Number.isNaN(expirationDate.getTime()) || expirationDate < today) {
+        return Response.json(
+          { error: 'Promotion code has expired.' },
+          { status: 400 }
+        )
+      }
+
+      appliedPromotionCode = promotion.promoCode
+      discountAmount = Math.min(Number(promotion.discountAmount || 0), subtotalPrice)
+    }
+
+    const totalPrice = Math.max(subtotalPrice - discountAmount, 0)
 
     const confirmationCode = generateConfirmationCode()
     const booking = await Booking.create({
@@ -191,7 +226,10 @@ export async function POST(request) {
       movieId,
       showingId,
       bookingDate: new Date(),
-      bookingFee: 0,
+      bookingFee: subtotalPrice,
+      subtotalAmount: subtotalPrice,
+      discountAmount,
+      promotionCode: appliedPromotionCode,
       paymentReference: `TEMP-${confirmationCode}`,
       status: 'pending',
       taxAmount: 0,
@@ -225,6 +263,9 @@ export async function POST(request) {
           showingId: booking.showingId,
           showtime: booking.showtime,
           seats: booking.seats,
+          subtotalPrice: booking.subtotalAmount,
+          discountAmount: booking.discountAmount,
+          promotionCode: booking.promotionCode,
           totalPrice: booking.totalAmount,
           customerEmail: booking.customerInfo?.email,
           status: booking.status,

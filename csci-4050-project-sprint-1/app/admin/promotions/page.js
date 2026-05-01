@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import LogoutButton from '../../../components/LogoutButton';
+import AdminPromotionManager from '../../../components/admin/AdminPromotionManager';
 import AdminPortalNav from '../../../components/admin/AdminPortalNav';
 import shellStyles from '../../../components/admin/AdminPortal.module.css';
 import authStyles from '../../auth-ui.module.css';
@@ -23,7 +24,7 @@ export default async function AdminPromotionsPage() {
             <p className={shellStyles.eyebrow}>Admin Portal</p>
             <h1 className={shellStyles.title}>Manage Promotions</h1>
             <p className={shellStyles.subtitle}>
-              Promotion options can be managed from this section.
+              Add promotions and send them to subscribed customers.
             </p>
           </div>
           <div className={shellStyles.headerActions}>
@@ -36,9 +37,7 @@ export default async function AdminPromotionsPage() {
 
         <AdminPortalNav currentPath="/admin/promotions" />
 
-        <div className={shellStyles.placeholderBox}>
-          Promotion management can be added here later without changing the rest of the admin portal.
-        </div>
+        <AdminPromotionManager />
       </section>
     </main>
   );

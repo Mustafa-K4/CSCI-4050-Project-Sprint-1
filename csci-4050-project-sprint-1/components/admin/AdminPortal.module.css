@@ -87,6 +87,18 @@
   color: #ffffff;
 }
 
+.siteNavLink {
+  margin-left: auto;
+  border-color: #d1fae5;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.siteNavLink:hover {
+  border-color: #86efac;
+  background: #dcfce7;
+}
+
 .cardLink {
   text-decoration: none;
   color: inherit;
@@ -501,6 +513,10 @@
 }
 
 @media (max-width: 640px) {
+  .siteNavLink {
+    margin-left: 0;
+  }
+
   .fieldGrid {
     grid-template-columns: 1fr;
   }
