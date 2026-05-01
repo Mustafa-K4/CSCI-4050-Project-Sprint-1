@@ -153,6 +153,9 @@ export default function BookingPage() {
   const [confirmationCode, setConfirmationCode] = useState('')
   const [loginModalOpen, setLoginModalOpen] = useState(false)
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [appliedPromotion, setAppliedPromotion] = useState(null)
+  const [promoChecking, setPromoChecking] = useState(false)
 
   async function loadUserProfile(userId) {
     if (!userId) {
@@ -318,6 +321,10 @@ export default function BookingPage() {
     (requestedTickets.adult * PRICES.adult) +
     (requestedTickets.child * PRICES.child) +
     (requestedTickets.senior * PRICES.senior)
+  const promoDiscount = appliedPromotion
+    ? Math.min(Number(appliedPromotion.discountAmount || 0), subtotal)
+    : 0
+  const orderTotal = Math.max(subtotal - promoDiscount, 0)
   const selectionComplete =
     requestedTickets.adult === selectedAdult &&
     requestedTickets.child === selectedChild &&
@@ -416,6 +423,60 @@ export default function BookingPage() {
       ...prev,
       [field]: value,
     }))
+  }
+
+  function updatePromoCode(value) {
+    setCheckoutError('')
+    setAppliedPromotion(null)
+    setPromoCode(value.toUpperCase())
+  }
+
+  async function handleApplyPromoCode() {
+    const normalizedPromoCode = promoCode.trim().toUpperCase()
+
+    if (!normalizedPromoCode) {
+      setCheckoutError('Enter a promotion code before applying it.')
+      return
+    }
+
+    if (!/^[A-Z0-9_-]{3,24}$/.test(normalizedPromoCode)) {
+      setCheckoutError('Promotion code must be 3-24 characters using letters, numbers, dashes, or underscores.')
+      return
+    }
+
+    setCheckoutError('')
+    setPromoChecking(true)
+
+    try {
+      const response = await fetch('/api/promotions')
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.error || 'Unable to validate promotion code.')
+      }
+
+      const promotion = Array.isArray(data)
+        ? data.find((item) => String(item.promoCode || '').toUpperCase() === normalizedPromoCode)
+        : null
+
+      if (!promotion) {
+        throw new Error('Promotion code was not found.')
+      }
+
+      const expirationDate = new Date(promotion.expirationDate)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (Number.isNaN(expirationDate.getTime()) || expirationDate < today) {
+        throw new Error('Promotion code has expired.')
+      }
+
+      setPromoCode(normalizedPromoCode)
+      setAppliedPromotion(promotion)
+    } catch (promoError) {
+      setAppliedPromotion(null)
+      setCheckoutError(promoError.message || 'Unable to apply promotion code.')
+    } finally {
+      setPromoChecking(false)
+    }
   }
 
   function updateManualCard(field, value) {
@@ -544,6 +605,11 @@ export default function BookingPage() {
       return
     }
 
+    if (promoCode.trim() && !appliedPromotion) {
+      setCheckoutError('Apply the promotion code or clear it before continuing.')
+      return
+    }
+
     setCheckoutError('')
     setStep(STEP_PAYMENT)
   }
@@ -586,6 +652,7 @@ export default function BookingPage() {
           ticketTypes: requestedTickets,
           customerInfo,
           paymentMethod,
+          promotionCode: appliedPromotion?.promoCode || '',
         }),
       })
 
@@ -909,6 +976,39 @@ export default function BookingPage() {
 
                 <section className={styles.checkoutCard}>
                   <div className={styles.checkoutHeader}>
+                    <h4>Promotion Code</h4>
+                    {appliedPromotion ? <span className={styles.promoApplied}>Applied</span> : null}
+                  </div>
+                  <div className={styles.promoRow}>
+                    <input
+                      className={styles.input}
+                      type="text"
+                      value={promoCode}
+                      onChange={(event) => updatePromoCode(event.target.value)}
+                      placeholder="Enter promo code"
+                      aria-label="Promotion code"
+                      maxLength={24}
+                    />
+                    <button
+                      type="button"
+                      className={styles.secondaryBtn}
+                      onClick={handleApplyPromoCode}
+                      disabled={promoChecking}
+                    >
+                      {promoChecking ? 'Checking...' : 'Apply'}
+                    </button>
+                  </div>
+                  {appliedPromotion ? (
+                    <p className={styles.promoMessage}>
+                      {appliedPromotion.promoCode} applied: ${promoDiscount.toFixed(2)} off this order.
+                    </p>
+                  ) : (
+                    <p className={styles.helperText}>Promotion codes are optional.</p>
+                  )}
+                </section>
+
+                <section className={styles.checkoutCard}>
+                  <div className={styles.checkoutHeader}>
                     <h4>Payment Method</h4>
                     {profileLoading ? <span className={styles.helperText}>Loading saved cards...</span> : null}
                   </div>
@@ -1024,9 +1124,19 @@ export default function BookingPage() {
                     <span>Seats</span>
                     <span>{selectedSeatLabels.join(', ')}</span>
                   </div>
+                  <div className={styles.summaryRow}>
+                    <span>Subtotal</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  {appliedPromotion ? (
+                    <div className={styles.summaryRow}>
+                      <span>Promotion ({appliedPromotion.promoCode})</span>
+                      <span>-${promoDiscount.toFixed(2)}</span>
+                    </div>
+                  ) : null}
                   <div className={`${styles.summaryRow} ${styles.totalRow}`}>
                     <span>Total</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>${orderTotal.toFixed(2)}</span>
                   </div>
                 </section>
 
@@ -1071,7 +1181,7 @@ export default function BookingPage() {
                       </div>
                       <div className={styles.detailRow}>
                         <span>Amount:</span>
-                        <span>${subtotal.toFixed(2)}</span>
+                        <span>${orderTotal.toFixed(2)}</span>
                       </div>
                     </div>
 
@@ -1095,8 +1205,18 @@ export default function BookingPage() {
                       <span>{selectedSeatLabels.join(', ')}</span>
                     </div>
                     <div className={styles.summaryRow}>
-                      <span>Total Amount</span>
+                      <span>Subtotal</span>
                       <span>${subtotal.toFixed(2)}</span>
+                    </div>
+                    {appliedPromotion ? (
+                      <div className={styles.summaryRow}>
+                        <span>Promotion ({appliedPromotion.promoCode})</span>
+                        <span>-${promoDiscount.toFixed(2)}</span>
+                      </div>
+                    ) : null}
+                    <div className={`${styles.summaryRow} ${styles.totalRow}`}>
+                      <span>Total Amount</span>
+                      <span>${orderTotal.toFixed(2)}</span>
                     </div>
                   </section>
                 </div>
@@ -1147,9 +1267,15 @@ export default function BookingPage() {
                     <span>Email</span>
                     <span>{customerInfo.email || 'N/A'}</span>
                   </div>
+                  {appliedPromotion ? (
+                    <div className={styles.summaryRow}>
+                      <span>Promotion ({appliedPromotion.promoCode})</span>
+                      <span>-${promoDiscount.toFixed(2)}</span>
+                    </div>
+                  ) : null}
                   <div className={`${styles.summaryRow} ${styles.totalRow}`}>
                     <span>Total Paid</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>${orderTotal.toFixed(2)}</span>
                   </div>
                 </section>
 

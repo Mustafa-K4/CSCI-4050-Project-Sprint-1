@@ -219,6 +219,18 @@ export default function HomePage() {
           </div>
 
           <aside className={styles.featurePanel} aria-label="Featured movie">
+            {featuredMovie?.poster_url ? (
+              <div className={styles.featurePosterWrap}>
+                <img
+                  src={featuredMovie.poster_url}
+                  alt={`${featuredMovie?.title || 'Featured movie'} poster`}
+                  className={styles.featurePoster}
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            ) : null}
             <span className={styles.featureLabel}>Featured</span>
             <h2>{featuredMovie?.title || 'Movies loading soon'}</h2>
             <p>

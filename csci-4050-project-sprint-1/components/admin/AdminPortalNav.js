@@ -24,6 +24,9 @@ export default function AdminPortalNav({ currentPath }) {
           </Link>
         );
       })}
+      <Link href="/" className={`${styles.navLink} ${styles.siteNavLink}`}>
+        Website Home
+      </Link>
     </nav>
   );
 }

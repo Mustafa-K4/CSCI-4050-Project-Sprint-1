@@ -18,6 +18,14 @@ const promotionSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  sentAt: {
+    type: Date,
+    default: null,
+  },
+  sentToCount: {
+    type: Number,
+    default: 0,
+  },
 }, { collection: 'promotions' })
 
 export default mongoose.models.Promotion || mongoose.model('Promotion', promotionSchema)

@@ -23,6 +23,20 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    subtotalAmount: {
+      type: Number,
+      default: 0,
+    },
+    discountAmount: {
+      type: Number,
+      default: 0,
+    },
+    promotionCode: {
+      type: String,
+      default: '',
+      trim: true,
+      uppercase: true,
+    },
     paymentReference: {
       type: String,
       required: false,

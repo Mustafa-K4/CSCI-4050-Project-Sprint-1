@@ -26,6 +26,15 @@ function buildFromField(emailFrom, emailFromName) {
   }
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
 async function sendEmail({ to, subject, plainMessage, htmlMessage, logPrefix }) {
   const { sendGridApiKey, emailFrom, emailFromName } = getEmailConfig()
 
@@ -173,5 +182,44 @@ Thank you for booking with Cinema E-Booking!
     plainMessage,
     htmlMessage,
     logPrefix: 'BookingConfirmation',
+  })
+}
+
+export async function sendPromotionEmail({ to, promotion }) {
+  const promoCode = String(promotion?.promoCode || '').trim()
+  const description = String(promotion?.description || '').trim()
+  const discountAmount = Number(promotion?.discountAmount || 0)
+  const expirationDate = promotion?.expirationDate
+    ? new Date(promotion.expirationDate).toLocaleDateString()
+    : 'N/A'
+
+  const subject = `Cinema E-Booking Promotion - ${promoCode}`
+  const plainMessage = `
+Cinema E-Booking Promotion
+
+Promo Code: ${promoCode}
+Discount: $${discountAmount.toFixed(2)}
+Expires: ${expirationDate}
+
+${description}
+  `.trim()
+
+  const htmlMessage = `
+    <h2>Cinema E-Booking Promotion</h2>
+    <p>${escapeHtml(description)}</p>
+    <div style="background-color: #f5f7fb; padding: 18px; border-radius: 8px; margin: 18px 0;">
+      <p><strong>Promo Code:</strong> ${escapeHtml(promoCode)}</p>
+      <p><strong>Discount:</strong> $${discountAmount.toFixed(2)}</p>
+      <p><strong>Expires:</strong> ${escapeHtml(expirationDate)}</p>
+    </div>
+    <p>Use this code during checkout on Cinema E-Booking.</p>
+  `
+
+  return sendEmail({
+    to,
+    subject,
+    plainMessage,
+    htmlMessage,
+    logPrefix: 'Promotion',
   })
 }
